@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "7b292131-4a79-4885-87ba-eb860261530e"
+      }
+    },
+    "android": {
+      "package": "com.dassuman23.breathymobileroot"
+    }
+  }
+}
