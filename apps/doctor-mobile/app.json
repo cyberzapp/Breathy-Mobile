@@ -11,7 +11,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.breathy.doctor",
@@ -53,11 +55,15 @@
         {
           "android": {
             "packagingOptions": {
-              "pickFirst": ["lib/**/libc++_shared.so", "lib/**/libjsc.so"]
+              "pickFirst": [
+                "lib/**/libc++_shared.so",
+                "lib/**/libjsc.so"
+              ]
             }
           }
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "extra": {
       "eas": {

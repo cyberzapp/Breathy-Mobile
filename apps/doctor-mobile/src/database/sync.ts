@@ -4,7 +4,7 @@ import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { useSyncStore } from '../store/syncStore';
 
-const API_BASE_URL = 'https://breathy-backend-a6p5.onrender.com';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL!;
 
 
 export async function syncDatabase() {
