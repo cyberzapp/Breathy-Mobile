@@ -18,12 +18,6 @@ import apiClient from '../lib/apiClient';
 // ---------------------------------------------------------------------------
 // NotificationsPanel — Floating dropdown from bell icon
 // ---------------------------------------------------------------------------
-// Opens as a modal overlay positioned at the top-right, listing all
-// notifications fetched from /api/notifications. Supports:
-//   - Mark single as read
-//   - Mark all as read
-//   - Real-time listener via Supabase channels
-// ---------------------------------------------------------------------------
 
 interface Notification {
   id: string;
@@ -127,6 +121,25 @@ export default function NotificationsPanel({ visible, onClose }: NotificationsPa
     }
   };
 
+  const removeNotification = async (id: string) => {
+    // Optimistic UI update (instantly remove from screen)
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    try {
+      await apiClient.delete(`/api/notifications/${id}`);
+    } catch (error) {
+      console.error('[Notifications] Delete failed:', error);
+    }
+  };
+
+  const clearAllNotifications = async () => {
+    setNotifications([]); // Optimistic clear
+    try {
+      await apiClient.delete('/api/notifications/clear-all');
+    } catch (error) {
+      console.error('[Notifications] Clear all failed:', error);
+    }
+  };
+
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   const renderNotificationItem = ({ item }: { item: Notification }) => {
@@ -152,7 +165,18 @@ export default function NotificationsPanel({ visible, onClose }: NotificationsPa
           </Text>
           <Text style={styles.notifTime}>{getTimeAgo(item.created_at)}</Text>
         </View>
-        {!item.is_read && <View style={styles.unreadDot} />}
+
+        {/* Action Column: Unread Dot + Delete Button */}
+        <View style={styles.notifActions}>
+          {!item.is_read && <View style={styles.unreadDot} />}
+          <TouchableOpacity 
+            style={styles.deleteBtn}
+            onPress={() => removeNotification(item.id)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="close-outline" size={18} color="#94a3b8" />
+          </TouchableOpacity>
+        </View>
       </TouchableOpacity>
     );
   };
@@ -174,11 +198,19 @@ export default function NotificationsPanel({ visible, onClose }: NotificationsPa
                 </View>
               )}
             </View>
-            {unreadCount > 0 && (
-              <TouchableOpacity onPress={markAllAsRead}>
-                <Text style={styles.markAllText}>Mark all read</Text>
-              </TouchableOpacity>
-            )}
+            
+            <View style={styles.headerActions}>
+              {unreadCount > 0 && (
+                <TouchableOpacity onPress={markAllAsRead}>
+                  <Text style={styles.markAllText}>Mark all read</Text>
+                </TouchableOpacity>
+              )}
+              {notifications.length > 0 && (
+                <TouchableOpacity onPress={clearAllNotifications}>
+                  <Text style={styles.clearAllText}>Clear All</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
 
           {/* Content */}
@@ -260,10 +292,20 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#ffffff',
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
   markAllText: {
     fontSize: 12,
     fontWeight: '600',
     color: '#14b8a6',
+  },
+  clearAllText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#ef4444', // Red color for delete action
   },
   list: {
     maxHeight: 400,
@@ -306,6 +348,7 @@ const styles = StyleSheet.create({
   },
   notifContent: {
     flex: 1,
+    paddingRight: 6,
   },
   notifTitle: {
     fontSize: 13,
@@ -323,11 +366,22 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#94a3b8',
   },
+  notifActions: {
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    height: '100%',
+    paddingVertical: 2,
+  },
   unreadDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
     backgroundColor: '#14b8a6',
-    marginTop: 4,
+    marginBottom: 8,
+  },
+  deleteBtn: {
+    padding: 4,
+    backgroundColor: '#f1f5f9',
+    borderRadius: 12,
   },
 });

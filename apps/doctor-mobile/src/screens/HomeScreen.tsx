@@ -1,3 +1,5 @@
+// apps/doctor-mobile/src/screens/HomeScreen.tsx
+
 import React, { useState, useRef, useCallback } from 'react';
 import {
   View,
@@ -45,7 +47,10 @@ export default function HomeScreen() {
   const c = useColors();
   const { playPop } = useBreathySounds();
 
-  const doctorName = profileStatus?.full_name || 'Doctor';
+  // 1. Extract only the First Name by splitting at the first space
+  const fullName = profileStatus?.full_name || 'Doctor';
+  const doctorFirstName = fullName.split(' ')[0];
+  
   const greeting = getGreeting();
 
   // Ref guard: prevents onPress from firing after onLongPress
@@ -87,17 +92,36 @@ export default function HomeScreen() {
       >
         {/* Greeting + Video Call Button */}
         <View style={styles.header}>
-          <View>
+          
+          {/* 2. Added flex: 1 and paddingRight to ensure text never pushes icons out */}
+          <View style={{ flex: 1, paddingRight: 12 }}>
             <Text style={[styles.greetingLabel, { color: c.textTertiary }]}>{greeting}</Text>
-            <Text style={[styles.doctorName, { color: c.text }]}>Dr. {doctorName}</Text>
+            
+            {/* 3. Added numberOfLines={1} to truncate if still too long */}
+            <Text style={[styles.doctorName, { color: c.text }]} numberOfLines={1}>
+              Dr. {doctorFirstName}
+            </Text>
           </View>
-          <TouchableOpacity
-            style={[styles.videoCallBtn, { backgroundColor: c.card }]}
-            onPress={() => setShowVideoCalls(true)}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="videocam" size={20} color={c.brand} />
-          </TouchableOpacity>
+
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            {/* NEW CHAT BUTTON */}
+            <TouchableOpacity
+              style={[styles.videoCallBtn, { backgroundColor: c.card }]}
+              onPress={() => navigation.navigate('ChatList')}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="chatbubbles" size={22} color={c.brand} />
+            </TouchableOpacity>
+          
+            {/* EXISTING VIDEO BUTTON */}
+            <TouchableOpacity
+              style={[styles.videoCallBtn, { backgroundColor: c.card }]}
+              onPress={() => setShowVideoCalls(true)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="videocam" size={22} color={c.brand} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Quick Action Strip */}

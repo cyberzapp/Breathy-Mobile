@@ -1,12 +1,14 @@
 import React, { useRef, useState } from 'react';
-import { View, Text, StyleSheet, Dimensions, TouchableOpacity, FlatList } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity, FlatList, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import SignatureScreen from 'react-native-signature-canvas';
 import { useAppStore } from '../store/appStore';
 import { supabase } from '../lib/supabaseClient';
 import { decode } from 'base64-arraybuffer';
 import short from 'short-uuid';
+
+// INDUSTRY STANDARD: Import the pure native Skia component
+import { SkiaSignaturePad, SignaturePadRef } from '../components/ui/SkiaSignaturePad';
 
 const { width, height } = Dimensions.get('window');
 
@@ -45,8 +47,12 @@ const SLIDES = [
 export default function OnboardingScreen() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
+  
+  // UX TRICK: Lock the FlatList scroll when the user is actively drawing
+  const [scrollEnabled, setScrollEnabled] = useState(true);
+  
   const flatListRef = useRef<FlatList>(null);
-  const signatureRef = useRef<any>(null);
+  const signatureRef = useRef<SignaturePadRef>(null);
   
   const setHasSeenNativeOnboarding = useAppStore((s) => s.setHasSeenNativeOnboarding);
 
@@ -61,20 +67,21 @@ export default function OnboardingScreen() {
     setHasSeenNativeOnboarding(true);
   };
 
-  const handleConfirmSignature = () => {
-    // Read the signature from the canvas
-    signatureRef.current?.readSignature();
-  };
+  const handleConfirmSignature = async () => {
+    // 1. Instantly grab the base64 from our Skia Canvas
+    const base64Data = signatureRef.current?.getBase64();
 
-  const handleSignatureOK = async (signatureBase64: string) => {
+    if (!base64Data) {
+      Alert.alert('Hold on', 'Please draw a signature first.');
+      return;
+    }
+
     try {
       setIsUploading(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not logged in");
 
-      // Strip the data:image/png;base64, prefix
-      const base64Data = signatureBase64.replace(/^data:image\/\w+;base64,/, '');
-
+      // 2. Skia returns raw base64 (no data:image/png prefix), so we just generate the name and upload
       const fileName = `${user.id}_${short.generate()}.png`;
       
       const { data, error } = await supabase.storage
@@ -83,7 +90,7 @@ export default function OnboardingScreen() {
 
       if (error) throw error;
 
-      // Update doctor profile with signature
+      // 3. Update doctor profile with signature path
       const { error: updateError } = await supabase
         .from('doctors')
         .update({ signature_url: data.path })
@@ -91,11 +98,11 @@ export default function OnboardingScreen() {
 
       if (updateError) throw updateError;
 
-      // Finish onboarding
+      // 4. Finish onboarding
       setHasSeenNativeOnboarding(true);
     } catch (e) {
       console.error(e);
-      alert('Failed to save signature. You can try again later in Settings.');
+      Alert.alert('Error', 'Failed to save signature. You can try again later in Settings.');
       setHasSeenNativeOnboarding(true); // let them through anyway
     } finally {
       setIsUploading(false);
@@ -113,17 +120,15 @@ export default function OnboardingScreen() {
           <Text style={styles.description}>{item.description}</Text>
           
           <View style={styles.signatureContainer}>
-             <SignatureScreen
-                ref={signatureRef}
-                onOK={handleSignatureOK}
-                webStyle={`
-                  .m-signature-pad { box-shadow: none; border: 1px solid #e2e8f0; border-radius: 12px; }
-                  .m-signature-pad--footer { display: none; margin: 0px; }
-                `}
-                autoClear={false}
-                descriptionText=""
-             />
-             <TouchableOpacity style={styles.clearBtn} onPress={() => signatureRef.current?.clearSignature()}>
+             <View style={styles.signatureCanvasWrapper}>
+               <SkiaSignaturePad
+                  ref={signatureRef}
+                  onDrawStart={() => setScrollEnabled(false)} // Prevents FlatList swipe
+                  onDrawEnd={() => setScrollEnabled(true)}    // Re-enables FlatList swipe
+               />
+             </View>
+             
+             <TouchableOpacity style={styles.clearBtn} onPress={() => signatureRef.current?.clear()}>
                <Text style={styles.clearBtnText}>Clear Pad</Text>
              </TouchableOpacity>
           </View>
@@ -159,6 +164,7 @@ export default function OnboardingScreen() {
         renderItem={renderItem}
         horizontal
         pagingEnabled
+        scrollEnabled={scrollEnabled} // Controlled dynamically by Skia
         showsHorizontalScrollIndicator={false}
         bounces={false}
         onMomentumScrollEnd={(event) => {
@@ -206,9 +212,12 @@ const styles = StyleSheet.create({
   iconContainer: { width: 140, height: 140, borderRadius: 35, justifyContent: 'center', alignItems: 'center', marginBottom: 40 },
   title: { fontSize: 28, fontWeight: '800', color: '#0f172a', textAlign: 'center', marginBottom: 16 },
   description: { fontSize: 16, color: '#64748b', textAlign: 'center', lineHeight: 24 },
-  signatureContainer: { width: '100%', height: 200, marginTop: 30, borderRadius: 12, overflow: 'hidden', position: 'relative' },
-  clearBtn: { position: 'absolute', top: 10, right: 10, backgroundColor: '#f1f5f9', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+  
+  signatureContainer: { width: '100%', height: 200, marginTop: 30, position: 'relative' },
+  signatureCanvasWrapper: { flex: 1, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#e2e8f0', backgroundColor: '#f8fafc' },
+  clearBtn: { position: 'absolute', top: 10, right: 10, backgroundColor: '#f1f5f9', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, zIndex: 10 },
   clearBtnText: { fontSize: 12, color: '#475569', fontWeight: '600' },
+  
   footer: { paddingHorizontal: 32, paddingBottom: 40, paddingTop: 20 },
   dotsContainer: { flexDirection: 'row', justifyContent: 'center', marginBottom: 30 },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#cbd5e1', marginHorizontal: 4 },

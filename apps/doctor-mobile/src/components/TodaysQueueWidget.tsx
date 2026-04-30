@@ -85,7 +85,6 @@ export default function TodaysQueueWidget() {
   useEffect(() => {
     // 1. Supabase real-time channels
     const unsubscribe = subscribeToQueueChanges(() => {
-      console.log('[Queue] Real-time update received');
       fetchAll(true);
     });
 

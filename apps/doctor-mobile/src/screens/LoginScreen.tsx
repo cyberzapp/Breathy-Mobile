@@ -17,6 +17,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabaseClient';
+import { Screen } from '../components/Screen';
 
 // ---------------------------------------------------------------------------
 // LoginScreen
@@ -295,6 +296,7 @@ function TermsModal({
 }) {
   return (
     <Modal visible={visible} animationType="slide" transparent>
+    <Screen isModal={true} style={{ backgroundColor: '#f4f4f4' }}>
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           <Text style={styles.modalTitle}>Terms and Conditions</Text>
@@ -334,6 +336,7 @@ function TermsModal({
           </View>
         </View>
       </View>
+    </Screen>
     </Modal>
   );
 }

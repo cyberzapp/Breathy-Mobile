@@ -23,7 +23,7 @@ import SettingsScreen from '../screens/SettingsScreen';
 
 import SectionWebViewScreen from '../screens/SectionWebViewScreen';
 import CalendarScreen from '../screens/CalendarScreen';
-
+import VideoModuleScreen from '../screens/VideoModuleScreen';
 // Phase 4.1: Native Settings Screens
 import AvailabilitySettingsScreen from '../screens/settings/AvailabilitySettingsScreen';
 import PrescriptionSettingsScreen from '../screens/settings/PrescriptionSettingsScreen';
@@ -32,6 +32,9 @@ import SecuritySettingsScreen from '../screens/settings/SecuritySettingsScreen';
 import HelpScreen from '../screens/settings/HelpScreen';
 import TermsScreen from '../screens/settings/TermsScreen';
 
+// Phase 2: Chat Screens
+import ChatListScreen from '../screens/chat/ChatListScreen';
+import ChatRoomScreen from '../screens/chat/ChatRoomScreen';
 
 // Phase 2: Apps native screens
 import BreathyDeskScreen from '../screens/apps/BreathyDeskScreen';
@@ -63,13 +66,15 @@ function TabNavigator() {
   const c = useColors();
   const insets = useSafeAreaInsets();
   
-  // Calculate dynamic bottom padding to account for physical navigation bars on Android
-  const bottomPadding = Platform.OS === 'ios' ? 24 : Math.max(8, insets.bottom + 4);
-  const tabHeight = (Platform.OS === 'ios' ? 88 : 65) + Math.max(0, insets.bottom - 10);
+  // Responsive Height & Padding Logic
+  // baseHeight represents the actual touchable content area.
+  const baseHeight = 60; 
+  // We add the device's physical bottom inset to push the content up into the safe viewing area.
+  const bottomInset = insets.bottom > 0 ? insets.bottom : (Platform.OS === 'ios' ? 20 : 10);
+  const tabHeight = baseHeight + bottomInset;
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
-
       <Tab.Navigator
         screenOptions={{
           headerShown: false,
@@ -78,14 +83,22 @@ function TabNavigator() {
             backgroundColor: c.tabBar,
             borderTopWidth: 0,
             height: tabHeight,
-            paddingBottom: bottomPadding,
-            paddingTop: 8,
+            // Dynamically pad the bottom to exact inset height
+            paddingBottom: bottomInset,
+            // Small top padding to balance the vertical flex
+            paddingTop: 2,
             shadowColor: '#000',
             shadowOffset: { width: 0, height: -4 },
             shadowOpacity: 0.06,
             shadowRadius: 12,
             elevation: 10,
             borderTopColor: c.tabBarBorder,
+          },
+          // Enforce centering for the items inside the tab bar
+          tabBarItemStyle: {
+            justifyContent: 'center',
+            alignItems: 'center',
+            paddingBottom: 4, // Balances the spacing between icon and label
           },
           tabBarActiveTintColor: c.brand,
           tabBarInactiveTintColor: c.textTertiary,
@@ -161,6 +174,13 @@ export default function DashboardTabs() {
         component={CalendarScreen}
         options={{ animation: 'slide_from_right' }}
       />
+
+      <Stack.Screen 
+        name="VideoModule" 
+        component={VideoModuleScreen} 
+        options={{ animation: 'fade' }} 
+      />
+
       {/* Phase 2: Apps native screens */}
       <Stack.Screen
         name="BreathyDesk"
@@ -182,6 +202,8 @@ export default function DashboardTabs() {
         component={BillingScreen}
         options={{ animation: 'slide_from_right' }}
       />
+      <Stack.Screen name="ChatList" component={ChatListScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="ChatRoom" component={ChatRoomScreen} options={{ animation: 'slide_from_right' }} />
       {/* Phase 4: Profile & Settings */}
       <Stack.Screen
         name="Profile"
@@ -245,7 +267,9 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: Platform.OS === 'ios' ? 16 : 20,
+    // Removed the dynamic OS-based margin bottom, substituting a static offset 
+    // to cleanly float above the perfectly centered standard icons.
+    marginTop: -24, 
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
     shadowRadius: 8,

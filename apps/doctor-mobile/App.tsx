@@ -43,7 +43,7 @@ export default function App() {
     const bootSequence = async () => {
       try {
         const count = await database.get('patients').query().fetchCount();
-        console.log(`✅ WatermelonDB is ALIVE! Patient count: ${count}`);
+        
       } catch (e) {
         console.error(`❌ App Boot Sequence failed:`, e);
       }

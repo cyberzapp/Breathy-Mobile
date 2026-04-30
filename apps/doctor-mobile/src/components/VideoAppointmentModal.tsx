@@ -60,17 +60,15 @@ export default function VideoAppointmentModal({ visible, event, onClose }: Props
       
       // Close modal and navigate to WebView
       onClose();
-      navigation.navigate('SectionWebView', {
-        title: 'Video Consultation',
-        path: `/video/${event.id}`,
+      navigation.navigate('VideoModule', {
+        appointmentId: event.id,
       });
     } catch (err) {
       console.error('Failed to start call', err);
       // Fallback navigate anyway in case the backend already flagged it as started
       onClose();
-      navigation.navigate('SectionWebView', {
-        title: 'Video Consultation',
-        path: `/video/${event.id}`,
+      navigation.navigate('VideoModule', {
+        appointmentId: event.id,
       });
     } finally {
       setLoading(false);

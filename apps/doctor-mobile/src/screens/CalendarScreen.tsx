@@ -69,9 +69,9 @@ export default function CalendarScreen() {
         clinicId: 'all',
         type: 'all'
       });
-      console.log(`[DEBUG Calendar] Fetched ${data?.length || 0} events from API`);
+
       if (data && data.length > 0) {
-        console.log(`[DEBUG Calendar] Sample event:`, JSON.stringify(data[0], null, 2));
+
       }
       setEvents(data || []);
     } catch (err: any) {

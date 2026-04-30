@@ -3,6 +3,7 @@ import { View, ActivityIndicator, StyleSheet, Text, StatusBar, Image } from 'rea
 import { NavigationContainer, DefaultTheme, DarkTheme, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as Notifications from 'expo-notifications';
+import { postMessage } from '../services/chatService';
 import { supabase } from '../lib/supabaseClient';
 import { useAuthStore } from '../store/authStore';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
@@ -16,7 +17,7 @@ import OfflineGateScreen from '../screens/OfflineGateScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
 import { useAppStore } from '../store/appStore';
 import { useThemeStore } from '../store/themeStore';
-
+import { registerForPushNotificationsAsync } from '../hooks/usePushNotifications';
 // ---------------------------------------------------------------------------
 // RootNavigator — The Core Routing Engine
 // ---------------------------------------------------------------------------
@@ -63,6 +64,22 @@ export default function RootNavigator() {
   // --- Push Notification Hooks (Moved to the top!) ---
   const lastNotificationResponse = Notifications.useLastNotificationResponse();
 
+  useEffect(() => {
+    // Registers a special notification type that has a text input box natively
+    Notifications.setNotificationCategoryAsync('chat_message', [
+      {
+        identifier: 'REPLY_ACTION',
+        buttonTitle: 'Reply',
+        textInput: {
+          submitButtonTitle: 'Send',
+          placeholder: 'Type a message...',
+        },
+        options: {
+          opensAppToForeground: false, // Send silently in background if possible
+        },
+      },
+    ]);
+  }, []);
   // --- Effects ---
   useEffect(() => {
     checkOnboardingStatus();
@@ -78,6 +95,7 @@ export default function RootNavigator() {
 
       if (session) {
         fetchProfileStatus();
+        registerForPushNotificationsAsync();
       }
     });
 
@@ -95,12 +113,26 @@ export default function RootNavigator() {
   }, [isLoading, isProfileLoading, session, profileStatus]);
 
   useEffect(() => {
-    if (
-      lastNotificationResponse &&
-      lastNotificationResponse.notification.request.content.data?.route &&
-      lastNotificationResponse.actionIdentifier === Notifications.DEFAULT_ACTION_IDENTIFIER
-    ) {
-      const data = lastNotificationResponse.notification.request.content.data;
+    if (!lastNotificationResponse) return;
+
+    // Cast data as an any-type record so TypeScript stops complaining about missing properties
+    const data = lastNotificationResponse.notification.request.content.data as Record<string, any>;
+    const actionId = lastNotificationResponse.actionIdentifier;
+
+    // SCENARIO 1: The user typed a quick reply from their lock screen
+    if (actionId === 'REPLY_ACTION') {
+      const userText = (lastNotificationResponse as any).userText;
+      const params = data?.params; // Safely extract params
+      
+      if (userText && params?.sessionId) {
+        console.log('[Push] Silently sending quick reply to session:', params.sessionId);
+        postMessage(params.sessionId, userText).catch(console.error);
+      }
+      return; 
+    }
+
+    // SCENARIO 2: The user tapped the notification normally (Deep Link)
+    if (actionId === Notifications.DEFAULT_ACTION_IDENTIFIER && data?.route) {
       if (navigationRef.isReady()) {
         console.log('[Push] Deep linking to:', data.route, data.params);
         navigationRef.navigate(data.route as any, data.params as any);

@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
   joinBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#3b82f6', // Video blue
+    backgroundColor: '#22ae9e', // Video blue
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,

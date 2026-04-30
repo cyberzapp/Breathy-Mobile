@@ -5,7 +5,6 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  Alert,
   StyleSheet,
   Share,
 } from 'react-native';
@@ -16,7 +15,6 @@ import { useAuthStore } from '../store/authStore';
 import { useThemeStore } from '../store/themeStore';
 import { useColors } from '../hooks/useColors';
 
-// INDUSTRY STANDARD: Reuse our modal wrapper for a consistent UI
 import KeyboardAwareModal from '../components/ui/KeyboardAwareModal';
 
 type SettingItem = {
@@ -29,7 +27,6 @@ type SettingItem = {
 
 export default function SettingsScreen() {
   const navigation = useNavigation<any>();
-  const signOut = useAuthStore((s) => s.signOut);
   const profileStatus = useAuthStore((s) => s.profileStatus);
   const themeMode = useThemeStore((s) => s.mode);
   const setThemeMode = useThemeStore((s) => s.setMode);
@@ -41,17 +38,6 @@ export default function SettingsScreen() {
   const setAppearance = (mode: 'day' | 'night' | 'default') => {
     const storeMode = mode === 'day' ? 'light' : mode === 'night' ? 'dark' : 'system';
     setThemeMode(storeMode);
-  };
-
-  const handleSignOut = () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Sign Out', style: 'destructive', onPress: signOut },
-      ]
-    );
   };
 
   const handleShareApp = async () => {
@@ -89,7 +75,7 @@ export default function SettingsScreen() {
           subtitle: 'v2.0.0 (Native)', 
           icon: 'information-circle-outline', 
           color: c.brand, 
-          onPress: () => setShowAppInfo(true) // Triggers our new modal
+          onPress: () => setShowAppInfo(true)
         },
       ],
     },
@@ -188,16 +174,6 @@ export default function SettingsScreen() {
             </View>
           </View>
         </View>
-
-        {/* Sign Out Button */}
-        <TouchableOpacity
-          style={[s.signOutButton, { backgroundColor: c.errorBg, borderColor: c.errorBorder }]}
-          onPress={handleSignOut}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="log-out-outline" size={20} color={c.error} />
-          <Text style={{ fontSize: 15, fontWeight: '700', color: c.error }}>Sign Out</Text>
-        </TouchableOpacity>
       </ScrollView>
 
       {/* App Version & Share Modal */}
@@ -243,11 +219,9 @@ const s = StyleSheet.create({
   settingIcon: { width: 38, height: 38, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
   settingTitle: { fontSize: 14, fontWeight: '600' },
   settingSubtitle: { fontSize: 12, marginTop: 2 },
-  signOutButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 14, paddingVertical: 15, marginTop: 12, borderWidth: 1 },
   appearanceRow: { flexDirection: 'row', padding: 12, gap: 10 },
   appearanceButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 12 },
   
-  // App Info Modal Styles
   modalContent: { alignItems: 'center', paddingVertical: 20 },
   logoBox: { width: 80, height: 80, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
   appName: { fontSize: 22, fontWeight: '800', marginBottom: 4 },

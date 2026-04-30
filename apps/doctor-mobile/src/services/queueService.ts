@@ -87,8 +87,9 @@ export const getTodaysVideoAppointments = (): Promise<any[]> =>
 
 /** Subscribe to real-time queue changes. Returns cleanup function. */
 export function subscribeToQueueChanges(onUpdate: () => void): () => void {
+  const uniqueId = Date.now().toString();
   const waitlistChannel = supabase
-    .channel('native:waitlist_entries:queue')
+    .channel(`native:waitlist_entries:queue:${uniqueId}`)
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'waitlist_entries' },
@@ -97,7 +98,7 @@ export function subscribeToQueueChanges(onUpdate: () => void): () => void {
     .subscribe();
 
   const appointmentsChannel = supabase
-    .channel('native:appointments:queue')
+    .channel(`native:appointments:queue:${uniqueId}`)
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'appointments' },

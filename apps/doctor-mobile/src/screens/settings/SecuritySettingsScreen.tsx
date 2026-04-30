@@ -1,3 +1,4 @@
+// apps/doctor-mobile/src/screens/settings/SecuritySettingsScreen.tsx
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -14,6 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import apiClient from '../../lib/apiClient';
 import { useColors } from '../../hooks/useColors';
+import { useAuthStore } from '../../store/authStore';
 
 // ---------------------------------------------------------------------------
 // SecuritySettingsScreen — Native replica of web's SecuritySettings.jsx
@@ -21,6 +23,7 @@ import { useColors } from '../../hooks/useColors';
 // Features:
 //   - On-Demand Visibility Toggle (online/offline)
 //   - Login History (last 10 entries)
+//   - Sign Out
 // ---------------------------------------------------------------------------
 
 const BRAND = '#22ae9e';
@@ -47,6 +50,8 @@ export default function SecuritySettingsScreen() {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
   const c = useColors();
+  
+  const signOut = useAuthStore((s) => s.signOut);
 
   // ── Visibility State ──
   const [isOnline, setIsOnline] = useState(false);
@@ -96,6 +101,18 @@ export default function SecuritySettingsScreen() {
     } finally {
       setVisSaving(false);
     }
+  };
+
+  // ── Handle Sign Out ──
+  const handleSignOut = () => {
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Sign Out', style: 'destructive', onPress: signOut },
+      ]
+    );
   };
 
   return (
@@ -149,7 +166,7 @@ export default function SecuritySettingsScreen() {
 
         {/* ── Section: Login History ── */}
         <View style={[styles.card, { backgroundColor: c.card }]}>
-          <Text style={[styles.cardTitle, { color: c.text }]}>Login & Security</Text>
+          <Text style={[styles.cardTitle, { color: c.text }]}>Login History</Text>
           <Text style={[styles.cardSubtitle, { color: c.textTertiary, marginBottom: 16 }]}>
             Review recent login activity on your account.
           </Text>
@@ -196,6 +213,16 @@ export default function SecuritySettingsScreen() {
             </>
           )}
         </View>
+
+        {/* ── Sign Out Button ── */}
+        <TouchableOpacity
+          style={[styles.signOutButton, { backgroundColor: c.errorBg || '#fef2f2', borderColor: c.errorBorder || '#fecaca' }]}
+          onPress={handleSignOut}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="log-out-outline" size={20} color={c.error || '#ef4444'} />
+          <Text style={{ fontSize: 15, fontWeight: '700', color: c.error || '#ef4444' }}>Sign Out</Text>
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );
@@ -247,4 +274,15 @@ const styles = StyleSheet.create({
   historyIp: { fontSize: 14, fontWeight: '600' },
   historyDevice: { fontSize: 12, marginTop: 2 },
   historyTime: { fontSize: 11, textAlign: 'right', maxWidth: 100 },
+  
+  signOutButton: {
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    gap: 8, 
+    borderRadius: 14, 
+    paddingVertical: 15, 
+    marginTop: 12, 
+    borderWidth: 1 
+  },
 });
