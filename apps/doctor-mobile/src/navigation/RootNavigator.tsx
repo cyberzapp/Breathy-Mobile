@@ -12,7 +12,7 @@ import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 // Screens
 import LoginScreen from '../screens/LoginScreen';
 import DashboardTabs from './DashboardTabs';
-import WebViewScreen from '../screens/WebViewScreen';
+import NativeOnboardingScreen from '../screens/NativeOnboardingScreen';
 import OfflineGateScreen from '../screens/OfflineGateScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
 import { useAppStore } from '../store/appStore';
@@ -186,7 +186,7 @@ export default function RootNavigator() {
             ) : isApproved ? (
               <Stack.Screen name="Dashboard" component={DashboardTabs} />
             ) : isOnline ? (
-              <Stack.Screen name="WebView" component={WebViewScreen} />
+              <Stack.Screen name="NativeOnboarding" component={NativeOnboardingScreen} />
             ) : (
               <Stack.Screen name="OfflineGate" component={OfflineGateScreen} />
             )}

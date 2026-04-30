@@ -33,3 +33,6 @@ export const removeProfilePhoto = () => {
 export const getDegrees = () => apiClient.get('/api/utils/degrees');
 export const getUniversities = () => apiClient.get('/api/utils/universities');
 
+export const searchDegrees = (q: string) => apiClient.get('/api/utils/search/degrees', { params: { q } });
+export const searchSpecialties = (q: string) => apiClient.get('/api/utils/search/specialties', { params: { q } });
+export const searchMedicalCouncils = (q: string) => apiClient.get('/api/utils/search/councils', { params: { q } });
