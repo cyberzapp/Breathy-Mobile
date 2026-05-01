@@ -11,7 +11,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '../../hooks/useColors';
 import { useBreathySounds } from '../../hooks/useBreathySounds';
-import { getSignatureUrl } from '../../services/settingsService';
+import { checkPrescriptionSetupStatus } from '../../services/settingsService';
 import DigitalPrescriptionForm from './DigitalPrescriptionForm';
 
 // ---------------------------------------------------------------------------
@@ -30,20 +30,23 @@ export default function PrescriptionScreen() {
   const { playPop } = useBreathySounds();
   const [mode, setMode] = useState<Mode>('digital');
 
-  // --- Signature Gate State ---
-  const [isCheckingSignature, setIsCheckingSignature] = useState(true);
+  // --- Setup Gate State ---
+  const [isCheckingSettings, setIsCheckingSettings] = useState(true);
   const [hasSignature, setHasSignature] = useState(false);
+  const [hasLocations, setHasLocations] = useState(false);
 
   useEffect(() => {
     (async () => {
       try {
-        const url = await getSignatureUrl();
-        setHasSignature(!!url);
+        const { hasSignature, hasLocations } = await checkPrescriptionSetupStatus();
+        setHasSignature(hasSignature);
+        setHasLocations(hasLocations);
       } catch {
         // If check fails (offline, etc.), allow access
         setHasSignature(true);
+        setHasLocations(true);
       } finally {
-        setIsCheckingSignature(false);
+        setIsCheckingSettings(false);
       }
     })();
   }, []);
@@ -63,21 +66,21 @@ export default function PrescriptionScreen() {
   };
 
   // --- Loading State ---
-  if (isCheckingSignature) {
+  if (isCheckingSettings) {
     return (
       <View style={[styles.container, { backgroundColor: c.bg, paddingTop: insets.top }]}>
         <View style={styles.centerBox}>
           <ActivityIndicator size="large" color={c.brand} />
           <Text style={[styles.loadingText, { color: c.textSecondary }]}>
-            Checking signature...
+            Checking settings...
           </Text>
         </View>
       </View>
     );
   }
 
-  // --- Signature Gate ---
-  if (!hasSignature) {
+  // --- Setup Gate ---
+  if (!hasSignature || !hasLocations) {
     return (
       <View style={[styles.container, { backgroundColor: c.bg, paddingTop: insets.top }]}>
         {/* Header */}
@@ -97,13 +100,17 @@ export default function PrescriptionScreen() {
         <View style={styles.centerBox}>
           <View style={[styles.signatureGateCard, { backgroundColor: c.card, borderColor: c.border }]}>
             <View style={[styles.signatureIconBox, { backgroundColor: '#fef3c7' }]}>
-              <Ionicons name="finger-print-outline" size={40} color="#f59e0b" />
+              <Ionicons name="warning-outline" size={40} color="#f59e0b" />
             </View>
             <Text style={[styles.signatureGateTitle, { color: c.text }]}>
-              Signature Required
+              Setup Required
             </Text>
             <Text style={[styles.signatureGateDesc, { color: c.textSecondary }]}>
-              Your digital signature appears on all prescriptions. Please set it up before creating your first prescription.
+              {!hasSignature && !hasLocations 
+                ? 'Please set up your digital signature and add at least one clinic location to generate prescriptions.' 
+                : !hasSignature 
+                  ? 'Your digital signature appears on all prescriptions. Please set it up before creating your first prescription.'
+                  : 'Please add at least one clinic location to generate prescriptions.'}
             </Text>
             <TouchableOpacity
               style={[styles.signatureGateBtn, { backgroundColor: c.brand }]}

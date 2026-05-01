@@ -25,6 +25,7 @@ import SectionWebViewScreen from '../screens/SectionWebViewScreen';
 import CalendarScreen from '../screens/CalendarScreen';
 import VideoModuleScreen from '../screens/VideoModuleScreen';
 // Phase 4.1: Native Settings Screens
+import AdditionalDetailsSettingsScreen from '../screens/settings/AdditionalDetailsSettingsScreen';
 import AvailabilitySettingsScreen from '../screens/settings/AvailabilitySettingsScreen';
 import PrescriptionSettingsScreen from '../screens/settings/PrescriptionSettingsScreen';
 import ReceptionistsSettingsScreen from '../screens/settings/ReceptionistsSettingsScreen';
@@ -208,6 +209,11 @@ export default function DashboardTabs() {
       <Stack.Screen
         name="Profile"
         component={ProfileScreen}
+        options={{ animation: 'slide_from_right' }}
+      />
+      <Stack.Screen
+        name="AdditionalDetailsSettings"
+        component={AdditionalDetailsSettingsScreen}
         options={{ animation: 'slide_from_right' }}
       />
       <Stack.Screen

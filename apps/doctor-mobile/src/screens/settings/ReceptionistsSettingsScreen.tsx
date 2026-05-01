@@ -12,6 +12,7 @@ import { useColors } from '../../hooks/useColors';
 
 // INDUSTRY STANDARD: Import our deterministic Keyboard wrapper
 import KeyboardAwareModal from '../../components/ui/KeyboardAwareModal';
+import SuccessModal from '../../components/ui/SuccessModal';
 
 export default function ReceptionistsSettingsScreen() {
   const navigation = useNavigation();
@@ -34,6 +35,7 @@ export default function ReceptionistsSettingsScreen() {
 
   // REPLACED BOTTOM SHEET REF WITH STANDARD MODAL STATE
   const [showAddStaffModal, setShowAddStaffModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => { fetchData(); }, []);
 
@@ -108,7 +110,7 @@ export default function ReceptionistsSettingsScreen() {
     setCreating(true);
     try {
       await createReceptionist(formData);
-      Alert.alert('Success', `${formData.name} has been added as staff!`);
+      setSuccessMessage(`${formData.name} has been added as staff!`);
       setFormData({ name: '', username: '', password: '' });
       setShowAddStaffModal(false);
       fetchData();
@@ -400,6 +402,11 @@ export default function ReceptionistsSettingsScreen() {
         </View>
       </KeyboardAwareModal>
 
+      <SuccessModal
+        visible={!!successMessage}
+        onClose={() => setSuccessMessage(null)}
+        message={successMessage || ''}
+      />
     </SafeAreaView>
   );
 }

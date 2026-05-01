@@ -9,8 +9,9 @@ import {
   ActivityIndicator
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { updateEducationAndSpecialties, getDegrees, getUniversities } from '../../services/profileService';
+import { updateEducationAndSpecialties, searchDegrees, searchUniversities, searchSpecialties } from '../../services/profileService';
 import { useAuthStore } from '../../store/authStore';
+import AsyncAutocomplete from '../ui/AsyncAutocomplete';
 
 // INDUSTRY STANDARD: Import the deterministic wrapper
 import KeyboardAwareModal from '../ui/KeyboardAwareModal';
@@ -26,29 +27,35 @@ interface EducationEntry {
 interface Props {
   visible: boolean;
   onClose: () => void;
+  onSuccess?: (msg: string) => void;
   profile: any;
 }
 
-export default function EducationEditModal({ visible, onClose, profile }: Props) {
+export default function EducationEditModal({ visible, onClose, onSuccess, profile }: Props) {
   const fetchProfile = useAuthStore((s) => s.fetchProfileStatus);
   const [entries, setEntries] = useState<EducationEntry[]>(
     profile?.education?.length > 0
-      ? profile.education.map((e: any) => ({
-        degree: e.degree || '',
-        university: e.university || '',
-        passing_year: String(e.passing_year || ''),
-      }))
+      ? profile.education.map((e: any) => {
+          // Handle both plain strings (from mobile) and react-select objects (from web)
+          const degStr = typeof e.degree === 'object' ? (e.degree?.label || e.degree?.value || '') : (e.degree || '');
+          const uniStr = typeof e.university === 'object' ? (e.university?.label || e.university?.value || '') : (e.university || '');
+          return {
+            degree: degStr,
+            university: uniStr,
+            passing_year: String(e.passing_year || ''),
+          };
+        })
       : [{ degree: '', university: '', passing_year: '' }]
   );
+  
+  // Specialties State
+  const [specialties, setSpecialties] = useState<any[]>(
+    profile?.specialties || []
+  );
+  const [selectedSpecialtyText, setSelectedSpecialtyText] = useState('');
+  
   const [isSaving, setIsSaving] = useState(false);
-  const [degreesList, setDegreesList] = useState<any[]>([]);
-  const [universitiesList, setUniversitiesList] = useState<any[]>([]);
   const [activeInput, setActiveInput] = useState<{ index: number, field: string } | null>(null);
-
-  React.useEffect(() => {
-    getDegrees().then((res: any) => setDegreesList(res?.data || res || [])).catch(() => { });
-    getUniversities().then((res: any) => setUniversitiesList(res?.data || res || [])).catch(() => { });
-  }, []);
 
   const addEntry = () => {
     setEntries([...entries, { degree: '', university: '', passing_year: '' }]);
@@ -68,49 +75,35 @@ export default function EducationEditModal({ visible, onClose, profile }: Props)
   const handleSave = async () => {
     const validEntries = entries.filter((e) => e.degree.trim());
     if (validEntries.length === 0) {
-      Alert.alert('Required', 'Please add at least one degree.');
+      Alert.alert('Required', 'Please add at least one qualification.');
       return;
     }
+    if (specialties.length === 0) {
+      Alert.alert('Required', 'Please select at least one specialty.');
+      return;
+    }
+    
     setIsSaving(true);
     try {
-      await updateEducationAndSpecialties({ education: validEntries });
-      await fetchProfile();
-      Alert.alert('Success', 'Education updated!');
-      onClose();
+      // Pass both education array and specialties array of UUIDs
+      const payload = {
+        education: validEntries,
+        specialties: specialties.map((sp: any) => sp.id || sp.specialty_id),
+      };
+      await updateEducationAndSpecialties(payload);
+      await fetchProfile(true);
+      
+      if (onSuccess) {
+        onSuccess('Education & specialties updated!');
+      } else {
+        Alert.alert('Success', 'Education & specialties updated!');
+        onClose();
+      }
     } catch (err: any) {
       Alert.alert('Error', err.message || 'Failed to update education.');
     } finally {
       setIsSaving(false);
     }
-  };
-
-  const renderSuggestions = (index: number, field: 'degree' | 'university', query: string) => {
-    if (activeInput?.index !== index || activeInput?.field !== field || !query || query.length < 2) return null;
-
-    const sourceList = field === 'degree' ? degreesList : universitiesList;
-    const filtered = sourceList.filter((item: any) =>
-      (item.name || item).toLowerCase().includes(query.toLowerCase())
-    ).slice(0, 5);
-
-    if (filtered.length === 0) return null;
-
-    return (
-      <View style={styles.suggestionsContainer}>
-        {filtered.map((item, idx) => (
-          <TouchableOpacity
-            key={idx}
-            style={styles.suggestionItem}
-            activeOpacity={0.7}
-            onPress={() => {
-              updateEntry(index, field, item.name || item);
-              setActiveInput(null);
-            }}
-          >
-            <Text style={styles.suggestionText}>{item.name || item}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-    );
   };
 
   return (
@@ -126,29 +119,35 @@ export default function EducationEditModal({ visible, onClose, profile }: Props)
             )}
           </View>
           <View style={{ zIndex: activeInput?.index === index && activeInput?.field === 'degree' ? 20 : 1 }}>
-            <TextInput
-              style={styles.input}
-              placeholder="Degree (e.g. MBBS, MD)"
-              placeholderTextColor="#94a3b8"
+            <AsyncAutocomplete
               value={entry.degree}
               onChangeText={(v) => updateEntry(index, 'degree', v)}
+              searchApi={searchDegrees}
+              dataKey="name"
+              placeholder="Degree (e.g. MBBS, MD)"
+              onSelect={(item) => {
+                const text = item.name || item.degrees || item.label || (typeof item === 'string' ? item : '');
+                updateEntry(index, 'degree', text);
+              }}
               onFocus={() => setActiveInput({ index, field: 'degree' })}
               onBlur={() => setTimeout(() => setActiveInput(null), 200)}
             />
-            {renderSuggestions(index, 'degree', entry.degree)}
           </View>
 
           <View style={{ zIndex: activeInput?.index === index && activeInput?.field === 'university' ? 20 : 1 }}>
-            <TextInput
-              style={styles.input}
-              placeholder="University / Institution"
-              placeholderTextColor="#94a3b8"
+            <AsyncAutocomplete
               value={entry.university}
               onChangeText={(v) => updateEntry(index, 'university', v)}
+              searchApi={searchUniversities}
+              dataKey="name"
+              placeholder="University / Institution"
+              onSelect={(item) => {
+                const text = item.name || item.label || (typeof item === 'string' ? item : '');
+                updateEntry(index, 'university', text);
+              }}
               onFocus={() => setActiveInput({ index, field: 'university' })}
               onBlur={() => setTimeout(() => setActiveInput(null), 200)}
             />
-            {renderSuggestions(index, 'university', entry.university)}
           </View>
 
           <TextInput
@@ -166,6 +165,47 @@ export default function EducationEditModal({ visible, onClose, profile }: Props)
         <Ionicons name="add-circle-outline" size={20} color={BRAND} />
         <Text style={styles.addBtnText}>Add Another Qualification</Text>
       </TouchableOpacity>
+
+      {/* Specialties Section */}
+      <View style={styles.specialtiesCard}>
+        <Text style={styles.entryLabel}>Specialties</Text>
+        <Text style={styles.helpText}>Select at least one area of expertise</Text>
+        
+        <View style={{ zIndex: 30, marginBottom: 12 }}>
+          <AsyncAutocomplete
+            value={selectedSpecialtyText}
+            onChangeText={setSelectedSpecialtyText}
+            searchApi={searchSpecialties}
+            dataKey="name"
+            placeholder="Search specialties (e.g., Cardiologist)"
+            icon="medical-outline"
+            onSelect={(selectedItem) => {
+              // Ensure we don't add duplicates
+              if (selectedItem && !specialties.find((s: any) => (s.id || s.specialty_id) === selectedItem.id)) {
+                setSpecialties([...specialties, selectedItem]);
+              }
+              // Slight delay to allow UI to update before clearing
+              setTimeout(() => setSelectedSpecialtyText(''), 100);
+            }}
+          />
+        </View>
+
+        {specialties.length > 0 && (
+          <View style={styles.chipsContainer}>
+            {specialties.map((sp: any, idx: number) => (
+              <View key={`sp-${idx}`} style={styles.chip}>
+                <Text style={styles.chipText}>{sp.name}</Text>
+                <TouchableOpacity 
+                  onPress={() => setSpecialties(specialties.filter((_, i) => i !== idx))}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Ionicons name="close-circle" size={16} color="#94a3b8" />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
 
       <View style={styles.footer}>
         <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
@@ -197,18 +237,6 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12,
     fontSize: 14, color: '#1e293b', backgroundColor: '#ffffff',
   },
-  suggestionsContainer: {
-    backgroundColor: '#ffffff',
-    borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 8,
-    marginTop: 4, elevation: 4, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, shadowOffset: { width: 0, height: 2 },
-    maxHeight: 150, overflow: 'hidden'
-  },
-  suggestionItem: {
-    paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9'
-  },
-  suggestionText: {
-    fontSize: 14, color: '#475569'
-  },
   addBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     paddingVertical: 14, borderWidth: 2, borderStyle: 'dashed', borderColor: '#e2e8f0', borderRadius: 12, marginBottom: 16,
@@ -222,4 +250,21 @@ const styles = StyleSheet.create({
   cancelText: { fontSize: 14, fontWeight: '600', color: '#64748b' },
   saveBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: BRAND, alignItems: 'center' },
   saveText: { fontSize: 14, fontWeight: '700', color: '#ffffff' },
+  specialtiesCard: {
+    backgroundColor: '#ffffff', borderRadius: 14, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#e2e8f0', zIndex: 30
+  },
+  helpText: {
+    fontSize: 12, color: '#94a3b8', marginBottom: 12, marginTop: 2,
+  },
+  chipsContainer: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4,
+  },
+  chip: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#f1f5f9',
+    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, gap: 6,
+    borderWidth: 1, borderColor: '#e2e8f0'
+  },
+  chipText: {
+    fontSize: 13, color: '#334155', fontWeight: '500',
+  },
 });

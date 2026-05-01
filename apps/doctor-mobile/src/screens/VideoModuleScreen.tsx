@@ -120,8 +120,7 @@ export default function VideoModuleScreen({ route }: any) {
     useEffect(() => {
         // Only run if the call is active and we've finished connecting
         if (!callObject || isConnecting) return;
-
-        let timeoutId: NodeJS.Timeout;
+        let timeoutId: ReturnType<typeof setTimeout>;
 
         // If there is no remote participant (patient hasn't joined)
         if (!remoteParticipant) {

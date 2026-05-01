@@ -19,10 +19,11 @@ const BRAND = '#22ae9e';
 interface Props {
   visible: boolean;
   onClose: () => void;
+  onSuccess?: (msg: string) => void;
   profile: any;
 }
 
-export default function PersonalDetailsEditModal({ visible, onClose, profile }: Props) {
+export default function PersonalDetailsEditModal({ visible, onClose, onSuccess, profile }: Props) {
   const fetchProfile = useAuthStore((s) => s.fetchProfileStatus);
   const [about, setAbout] = useState(profile?.about || '');
   const [isSaving, setIsSaving] = useState(false);
@@ -34,9 +35,14 @@ export default function PersonalDetailsEditModal({ visible, onClose, profile }: 
         about: about,
         profile_photo_url: profile?.profile_photo_url,
       });
-      await fetchProfile();
-      Alert.alert('Success', 'Details updated successfully!');
-      onClose();
+      await fetchProfile(true);
+      
+      if (onSuccess) {
+        onSuccess('Details updated successfully!');
+      } else {
+        Alert.alert('Success', 'Details updated successfully!');
+        onClose();
+      }
     } catch (err: any) {
       Alert.alert('Error', err.message || 'Failed to update details.');
     } finally {

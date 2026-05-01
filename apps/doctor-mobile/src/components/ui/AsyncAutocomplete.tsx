@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Keyboard,
   TextInputProps,
+  Dimensions,
 } from 'react-native';
 import { useColors } from '../../hooks/useColors';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,28 +17,63 @@ import { Ionicons } from '@expo/vector-icons';
 interface Props extends TextInputProps {
   value: string;
   onChangeText: (text: string) => void;
+  onSelect?: (item: any) => void; // <--- NEW: Allows parent to catch the full object/ID
   searchApi: (term: string) => Promise<any>;
   dataKey: string;
   placeholder?: string;
   style?: any;
   icon?: keyof typeof Ionicons.glyphMap;
+  dropdownDirection?: 'up' | 'down';
 }
 
 export default function AsyncAutocomplete({
   value,
   onChangeText,
+  onSelect, // <--- Destructure new prop
   searchApi,
   dataKey,
   placeholder,
   style,
   icon,
+  dropdownDirection = 'down',
   ...rest
 }: Props) {
   const c = useColors();
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [options, setOptions] = useState<string[]>([]);
+  // <--- CHANGED: Store objects instead of flat strings --->
+  const [options, setOptions] = useState<any[]>([]); 
   const [isSearching, setIsSearching] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+
+  const viewRef = useRef<View>(null);
+  const [dynamicDirection, setDynamicDirection] = useState<'up' | 'down'>(dropdownDirection);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardDidShow', (e) => setKeyboardHeight(e.endCoordinates.height));
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => setKeyboardHeight(0));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  const measureAndSetDirection = () => {
+    if (dropdownDirection) {
+      setDynamicDirection(dropdownDirection);
+    }
+    viewRef.current?.measure((x, y, width, height, pageX, pageY) => {
+      const windowHeight = Dimensions.get('window').height;
+      const spaceBelow = windowHeight - pageY - height - keyboardHeight;
+      const spaceAbove = pageY;
+
+      if (spaceBelow < 200 && spaceAbove > spaceBelow) {
+        setDynamicDirection('up');
+      } else {
+        setDynamicDirection('down');
+      }
+    });
+  };
 
   // Debounce API calls
   useEffect(() => {
@@ -53,15 +89,21 @@ export default function AsyncAutocomplete({
     const timer = setTimeout(async () => {
       setIsSearching(true);
       try {
-        // the API might return { data: [...] } or just [...]
         const response: any = await searchApi(value);
         const results = response?.data || response || [];
-        
+
         if (!controller.signal.aborted && Array.isArray(results)) {
-          // fuzzy search endpoints usually return { name: '...' }
-          const items = results.map((r: any) => r[dataKey] || r.name || r).filter(Boolean);
-          // deduplicate
-          setOptions(Array.from(new Set(items)));
+          // <--- CHANGED: Retain the ID and the raw object --->
+          let items = results.map((r: any) => {
+            if (typeof r === 'string') return { id: r, name: r, raw: r };
+            
+            const name = r[dataKey] || r.name || r.specialty || r.degrees || r.council_name || r.title || 'Unknown';
+            const id = r.id || r.value || name; // Safely grab the UUID
+            
+            return { id, name, raw: r };
+          }).filter((item: any) => item.name && item.name !== 'Unknown');
+
+          setOptions(items);
         }
       } catch (err) {
         if (!controller.signal.aborted) setOptions([]);
@@ -76,17 +118,24 @@ export default function AsyncAutocomplete({
     };
   }, [value, searchApi, dataKey]);
 
+  // <--- CHANGED: Handle full object selection --->
   const handleSelect = useCallback(
-    (selected: string) => {
-      onChangeText(selected);
+    (selectedItem: any) => {
+      onChangeText(selectedItem.name); // Keep UI showing the friendly name
+      if (onSelect) {
+        onSelect(selectedItem); // Pass the full object (with ID) to the parent
+      }
       setShowSuggestions(false);
       Keyboard.dismiss();
     },
-    [onChangeText]
+    [onChangeText, onSelect]
   );
 
   return (
-    <View style={[{ zIndex: showSuggestions ? 10 : 1, position: 'relative' }, style]}>
+    <View
+      ref={viewRef}
+      style={[{ zIndex: showSuggestions ? 100 : 1, position: 'relative' }, style]}
+    >
       <View style={[styles.inputWrapper, { backgroundColor: c.input, borderColor: value ? c.brand : c.borderMedium }]}>
         {icon && (
           <Ionicons name={icon} size={20} color={value ? c.brand : c.textTertiary} style={styles.icon} />
@@ -101,7 +150,10 @@ export default function AsyncAutocomplete({
             onChangeText(text);
             setShowSuggestions(text.length >= 2);
           }}
-          onFocus={() => setShowSuggestions(value.length >= 2)}
+          onFocus={() => {
+            setShowSuggestions(value.length >= 2);
+            measureAndSetDirection();
+          }}
           onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
           placeholder={placeholder}
           placeholderTextColor={c.textTertiary}
@@ -115,7 +167,11 @@ export default function AsyncAutocomplete({
       </View>
 
       {showSuggestions && (options.length > 0 || isSearching) && (
-        <View style={[styles.dropdown, { backgroundColor: c.card, borderColor: c.borderMedium }]}>
+        <View style={[
+          styles.dropdown,
+          { backgroundColor: c.card, borderColor: c.borderMedium },
+          dynamicDirection === 'up' ? styles.dropdownUp : styles.dropdownDown
+        ]}>
           {isSearching && (
             <View style={styles.dropdownLoading}>
               <ActivityIndicator size="small" color={c.brand} />
@@ -130,13 +186,13 @@ export default function AsyncAutocomplete({
           >
             {options.slice(0, 10).map((item, i) => (
               <TouchableOpacity
-                key={`${item}-${i}`}
+                key={`${item.id}-${i}`}
                 style={[styles.dropdownItem, { borderBottomColor: c.border }]}
-                onPress={() => handleSelect(item)}
+                onPress={() => handleSelect(item)} // <--- Passes the object
                 activeOpacity={0.6}
               >
                 <Text style={[styles.dropdownName, { color: c.text }]} numberOfLines={1}>
-                  {item}
+                  {item.name}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -168,10 +224,6 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   dropdown: {
-    position: 'absolute',
-    top: 56,
-    left: 0,
-    right: 0,
     borderWidth: 1,
     borderRadius: 12,
     shadowColor: '#000',
@@ -180,6 +232,16 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
     overflow: 'hidden',
+  },
+  dropdownDown: {
+    marginTop: 8,
+  },
+  dropdownUp: {
+    position: 'absolute',
+    bottom: 56,
+    left: 0,
+    right: 0,
+    marginBottom: 8,
   },
   dropdownLoading: {
     flexDirection: 'row',

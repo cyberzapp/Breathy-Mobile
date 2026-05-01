@@ -106,6 +106,38 @@ export const getSignatureUrl = async (): Promise<string | null> => {
   }
 };
 
+// --- Fast Setup Checker ---
+
+export const checkPrescriptionSetupStatus = async (): Promise<{ hasSignature: boolean, hasLocations: boolean }> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { hasSignature: false, hasLocations: false };
+
+  try {
+    // Check signature without generating a signed URL
+    const docReq = supabase
+      .from('doctors')
+      .select('signature_url')
+      .eq('id', user.id)
+      .single();
+
+    // Check locations count directly
+    const locReq = supabase
+      .from('prescription_locations')
+      .select('id', { count: 'exact', head: true })
+      .eq('doctor_id', user.id);
+
+    const [docRes, locRes] = await Promise.all([docReq, locReq]);
+
+    return {
+      hasSignature: !!docRes.data?.signature_url,
+      hasLocations: (locRes.count ?? 0) > 0,
+    };
+  } catch {
+    // If it fails, fallback to true to not block the user
+    return { hasSignature: true, hasLocations: true };
+  }
+};
+
 // --- Templates ---
 
 export const listTemplates = () => {

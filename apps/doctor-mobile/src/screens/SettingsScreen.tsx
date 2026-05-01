@@ -62,6 +62,7 @@ export default function SettingsScreen() {
     {
       title: 'Account',
       items: [
+        { title: 'Additional Details', subtitle: 'Optional contact & registration info', icon: 'information-circle-outline', color: c.brand, onPress: () => navigation.navigate('AdditionalDetailsSettings') },
         { title: 'Security', subtitle: 'Login history and account safety', icon: 'shield-checkmark-outline', color: c.brand, onPress: () => navigation.navigate('SecuritySettings') },
       ],
     },

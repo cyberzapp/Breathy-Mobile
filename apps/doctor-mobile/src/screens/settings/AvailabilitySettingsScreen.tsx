@@ -9,6 +9,7 @@ import { useNavigation } from '@react-navigation/native';
 import { getSchedules, updateSchedules, updateSearchVisibility } from '../../services/settingsService';
 import { useAuthStore } from '../../store/authStore';
 import { useColors } from '../../hooks/useColors';
+import SuccessModal from '../../components/ui/SuccessModal';
 
 // ---------------------------------------------------------------------------
 // Day helpers — mirrors web AvailabilityEditor.jsx exactly
@@ -44,6 +45,7 @@ export default function AvailabilitySettingsScreen() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
   const [isVisible, setIsVisible] = useState(profileStatus?.is_visible ?? true);
 
   // Schedule state — mirrors web exactly
@@ -150,7 +152,7 @@ export default function AvailabilitySettingsScreen() {
       const p_video_schedules = flattenSchedule(videoSchedules);
 
       await updateSchedules({ p_organization_schedules, p_video_schedules });
-      Alert.alert('Success', 'Schedule updated successfully!');
+      setShowSuccess(true);
     } catch (e: any) {
       Alert.alert('Error', e.message || 'Failed to save schedules.');
     } finally {
@@ -282,6 +284,15 @@ export default function AvailabilitySettingsScreen() {
           <Text style={styles.saveBtnText}>{saving ? 'Saving...' : 'Save Changes'}</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      <SuccessModal
+        visible={showSuccess}
+        onClose={() => {
+          setShowSuccess(false);
+          navigation.goBack();
+        }}
+        message="Schedule updated successfully!"
+      />
     </SafeAreaView>
   );
 }

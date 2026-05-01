@@ -23,9 +23,10 @@ interface Props {
   visible: boolean;
   onClose: () => void;
   onAdded: () => void;
+  onSuccess?: (msg: string) => void;
 }
 
-export default function AddPatientToQueueModal({ visible, onClose, onAdded }: Props) {
+export default function AddPatientToQueueModal({ visible, onClose, onAdded, onSuccess }: Props) {
   const [step, setStep] = useState<Step>('search');
   const [phone, setPhone] = useState('');
   const [patientFound, setPatientFound] = useState<any | null>(null);
@@ -87,8 +88,12 @@ export default function AddPatientToQueueModal({ visible, onClose, onAdded }: Pr
           gender: newPatientGender,
         });
       }
+      if (onSuccess) {
+        onSuccess('Patient added to queue successfully.');
+      } else {
+        onClose();
+      }
       onAdded();
-      onClose();
     } catch (error: any) {
       Alert.alert('Failed', error.message || 'Failed to add patient to queue.');
     } finally {

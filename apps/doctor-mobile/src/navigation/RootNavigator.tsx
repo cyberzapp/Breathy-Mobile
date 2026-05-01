@@ -13,6 +13,8 @@ import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import LoginScreen from '../screens/LoginScreen';
 import DashboardTabs from './DashboardTabs';
 import NativeOnboardingScreen from '../screens/NativeOnboardingScreen';
+import WelcomeOnboardingScreen from '../screens/WelcomeOnboardingScreen';
+import AwaitingReviewScreen from '../screens/AwaitingReviewScreen';
 import OfflineGateScreen from '../screens/OfflineGateScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
 import { useAppStore } from '../store/appStore';
@@ -165,6 +167,9 @@ export default function RootNavigator() {
   // 3. RENDER LOGIC AND UI
   // =========================================================================
   const isApproved = profileStatus?.profile_status === 'approved';
+  const isOnboarding = profileStatus?.profile_status === 'onboarding';
+  const isInProgress = profileStatus?.profile_status === 'in_progress';
+  const isAwaitingReview = profileStatus?.profile_status === 'awaiting_review';
   const needsOnlineFlow = session && !isApproved;
 
   const navTheme = resolved === 'dark' ? {
@@ -185,10 +190,23 @@ export default function RootNavigator() {
               <Stack.Screen name="Login" component={LoginScreen} />
             ) : isApproved ? (
               <Stack.Screen name="Dashboard" component={DashboardTabs} />
-            ) : isOnline ? (
-              <Stack.Screen name="NativeOnboarding" component={NativeOnboardingScreen} />
-            ) : (
+            ) : !isOnline ? (
               <Stack.Screen name="OfflineGate" component={OfflineGateScreen} />
+            ) : isOnboarding ? (
+              // Phase 1: Just prefix + name → creates row in doctors table
+              // Mirrors web's: case 'onboarding': return <Onboarding />
+              <Stack.Screen name="WelcomeOnboarding" component={WelcomeOnboardingScreen} />
+            ) : isInProgress ? (
+              // Phase 2: Fill remaining details → update via RPC
+              // Mirrors web's: case 'in_progress': return <ProfileLayout />
+              <Stack.Screen name="NativeOnboarding" component={NativeOnboardingScreen} />
+            ) : isAwaitingReview ? (
+              // Phase 3: Profile submitted, pending admin approval
+              // Mirrors web's: case 'awaiting_review': return <PendingApprovalPage />
+              <Stack.Screen name="AwaitingReview" component={AwaitingReviewScreen} />
+            ) : (
+              // rejected, suspended, etc — show the detail form to re-submit
+              <Stack.Screen name="NativeOnboarding" component={NativeOnboardingScreen} />
             )}
           </Stack.Navigator>
         </NavigationContainer>

@@ -21,6 +21,7 @@ import {
 } from '../services/calendarService';
 import { useColors } from '../hooks/useColors';
 import { Screen } from '../components/Screen';
+import SuccessModal from '../components/ui/SuccessModal';
 // ---------------------------------------------------------------------------
 // CalendarScreen — Full native calendar with month grid + day agenda
 // ---------------------------------------------------------------------------
@@ -54,6 +55,7 @@ export default function CalendarScreen() {
   const [inspectorEvent, setInspectorEvent] = useState<CalendarEvent | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [showOfflineBooking, setShowOfflineBooking] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const c = useColors();
   const insets = useSafeAreaInsets();
 
@@ -144,7 +146,7 @@ export default function CalendarScreen() {
     setActionLoading(true);
     try {
       await updateAppointmentStatus(eventId, newStatus);
-      Alert.alert('Updated', `Appointment marked as ${newStatus}`);
+      setSuccessMessage(`Appointment marked as ${newStatus}`);
       setInspectorEvent(null);
       await fetchEvents();
     } catch (err: any) {
@@ -323,8 +325,15 @@ export default function CalendarScreen() {
         <OfflineBookingModal
           visible={showOfflineBooking}
           onClose={() => setShowOfflineBooking(false)}
+          onSuccess={(msg: string) => { setShowOfflineBooking(false); setSuccessMessage(msg); }}
           initialDate={selectedDate}
           onBooked={fetchEvents}
+        />
+
+        <SuccessModal
+          visible={!!successMessage}
+          onClose={() => setSuccessMessage(null)}
+          message={successMessage || ''}
         />
       </View>
     </Screen>

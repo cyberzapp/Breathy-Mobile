@@ -21,6 +21,7 @@ import PersonalDetailsEditModal from '../components/profile/PersonalDetailsEditM
 import EducationEditModal from '../components/profile/EducationEditModal';
 import AwardsMembershipsEditModal from '../components/profile/AwardsMembershipsEditModal';
 import ProfilePhotoEditor from '../components/profile/ProfilePhotoEditor';
+import SuccessModal from '../components/ui/SuccessModal';
 import { useColors } from '../hooks/useColors';
 import { isOnline } from '../services/offlineCacheService';
 import { Screen } from '../components/Screen';
@@ -113,6 +114,7 @@ export default function ProfileScreen() {
 
   const [isEditing, setIsEditing] = useState(false);
   const [activeModal, setActiveModal] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [viewCount, setViewCount] = useState<number | null>(null);
   const [offline, setOffline] = useState(false);
 
@@ -323,16 +325,41 @@ export default function ProfileScreen() {
           onEdit={() => setActiveModal('education')}
         >
           {profile.education && profile.education.length > 0 ? (
-            profile.education.map((edu: any, i: number) => (
-              <View key={`edu-${i}`} style={styles.eduItem}>
-                <Text style={styles.eduDegree}>{edu.degree}</Text>
-                <Text style={styles.eduUniversity}>
-                  {edu.university}, {edu.passing_year}
-                </Text>
-              </View>
-            ))
+            profile.education.map((edu: any, i: number) => {
+              const degStr = typeof edu.degree === 'object' ? (edu.degree?.label || edu.degree?.value || '') : (edu.degree || '');
+              const uniStr = typeof edu.university === 'object' ? (edu.university?.label || edu.university?.value || '') : (edu.university || '');
+              
+              return (
+                <View key={`edu-${i}`} style={styles.eduItem}>
+                  <Text style={styles.eduDegree}>{degStr}</Text>
+                  <Text style={styles.eduUniversity}>
+                    {uniStr}{edu.passing_year ? `, ${edu.passing_year}` : ''}
+                  </Text>
+                </View>
+              );
+            })
           ) : (
             <Text style={styles.placeholderText}>Add your educational qualifications.</Text>
+          )}
+        </ProfileSection>
+
+        {/* ─── 4.5. Specialties ─── */}
+        <ProfileSection
+          title="Specialties"
+          icon="medical-outline"
+          isEditing={isEditing}
+          onEdit={() => setActiveModal('education')}
+        >
+          {profile.specialties && profile.specialties.length > 0 ? (
+            <View style={styles.chipsContainer}>
+              {profile.specialties.map((sp: any, idx: number) => (
+                <View key={`spec-${idx}`} style={styles.chip}>
+                  <Text style={styles.chipText}>{sp.name}</Text>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.placeholderText}>Add your specialties.</Text>
           )}
         </ProfileSection>
 
@@ -391,14 +418,15 @@ export default function ProfileScreen() {
         <ProfilePhotoEditor
           visible={true}
           onClose={() => setActiveModal(null)}
+          onSuccess={(msg: string) => { setActiveModal(null); setSuccessMessage(msg); }}
           currentPhoto={profile.profile_photo_url}
         />
       )}
       {activeModal === 'personal' && (
-
         <PersonalDetailsEditModal
           visible={true}
           onClose={() => setActiveModal(null)}
+          onSuccess={(msg: string) => { setActiveModal(null); setSuccessMessage(msg); }}
           profile={profile}
         />
       )}
@@ -406,6 +434,7 @@ export default function ProfileScreen() {
         <EducationEditModal
           visible={true}
           onClose={() => setActiveModal(null)}
+          onSuccess={(msg: string) => { setActiveModal(null); setSuccessMessage(msg); }}
           profile={profile}
         />
       )}
@@ -413,9 +442,17 @@ export default function ProfileScreen() {
         <AwardsMembershipsEditModal
           visible={true}
           onClose={() => setActiveModal(null)}
+          onSuccess={(msg: string) => { setActiveModal(null); setSuccessMessage(msg); }}
           profile={profile}
         />
       )}
+
+      {/* ─── Custom Success Modal ─── */}
+      <SuccessModal
+        visible={!!successMessage}
+        onClose={() => setSuccessMessage(null)}
+        message={successMessage || ''}
+      />
     </View>
   );
 }
@@ -585,4 +622,12 @@ const styles = StyleSheet.create({
   kvValue: { fontSize: 14, color: '#1e293b', fontWeight: '600', flex: 2, textAlign: 'right' },
 
   divider: { height: 1, backgroundColor: '#e2e8f0', marginVertical: 14 },
+  
+  chipsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: {
+    backgroundColor: '#f1f5f9',
+    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20,
+    borderWidth: 1, borderColor: '#e2e8f0'
+  },
+  chipText: { fontSize: 13, color: '#334155', fontWeight: '500' },
 });

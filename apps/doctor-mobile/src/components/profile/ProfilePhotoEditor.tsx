@@ -23,10 +23,11 @@ const BRAND = '#22ae9e';
 interface Props {
   visible: boolean;
   onClose: () => void;
+  onSuccess?: (msg: string) => void;
   currentPhoto?: string;
 }
 
-export default function ProfilePhotoEditor({ visible, onClose, currentPhoto }: Props) {
+export default function ProfilePhotoEditor({ visible, onClose, onSuccess, currentPhoto }: Props) {
   const fetchProfile = useAuthStore((s) => s.fetchProfileStatus);
   const [previewUri, setPreviewUri] = useState<string | null>(currentPhoto || null);
   const [selectedAsset, setSelectedAsset] = useState<ImagePicker.ImagePickerAsset | null>(null);
@@ -100,10 +101,14 @@ export default function ProfilePhotoEditor({ visible, onClose, currentPhoto }: P
       const newPhotoUrl = publicUrlData.publicUrl;
 
       await updatePersonalDetails({ profile_photo_url: newPhotoUrl });
-      await fetchProfile();
+      await fetchProfile(true);
 
-      Alert.alert('Success', 'Profile photo updated!');
-      onClose();
+      if (onSuccess) {
+        onSuccess('Profile photo updated!');
+      } else {
+        Alert.alert('Success', 'Profile photo updated!');
+        onClose();
+      }
     } catch (err: any) {
       Alert.alert('Error', err.message || 'Failed to save photo.');
     } finally {
@@ -124,9 +129,13 @@ export default function ProfilePhotoEditor({ visible, onClose, currentPhoto }: P
             setIsRemoving(true);
             try {
               await removeProfilePhoto();
-              await fetchProfile();
-              Alert.alert('Done', 'Profile photo removed.');
-              onClose();
+              await fetchProfile(true);
+              if (onSuccess) {
+                onSuccess('Profile photo removed.');
+              } else {
+                Alert.alert('Done', 'Profile photo removed.');
+                onClose();
+              }
             } catch (err: any) {
               Alert.alert('Error', err.message || 'Failed to remove photo.');
             } finally {

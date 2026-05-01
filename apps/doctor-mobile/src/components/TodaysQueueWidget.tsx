@@ -26,6 +26,7 @@ import {
 
 import AddPatientToQueueModal from './AddPatientToQueueModal';
 import VideoCallsModal from './VideoCallsModal';
+import SuccessModal from './ui/SuccessModal';
 
 // ---------------------------------------------------------------------------
 // TodaysQueueWidget — Native mirror of TodaysQueue.jsx + PatientsPanel
@@ -51,6 +52,7 @@ export default function TodaysQueueWidget() {
   // Modals state
   const [showAddPatientModal, setShowAddPatientModal] = useState(false);
   const [showVideoCallsModal, setShowVideoCallsModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // ── Data Fetching ──
   const fetchAll = useCallback(async (silent = false) => {
@@ -328,10 +330,17 @@ export default function TodaysQueueWidget() {
           visible={showAddPatientModal}
           onClose={() => setShowAddPatientModal(false)}
           onAdded={() => fetchAll(true)}
+          onSuccess={(msg) => { setShowAddPatientModal(false); setSuccessMessage(msg); }}
         />
         <VideoCallsModal
           visible={showVideoCallsModal}
           onClose={() => setShowVideoCallsModal(false)}
+        />
+        
+        <SuccessModal
+          visible={!!successMessage}
+          onClose={() => setSuccessMessage(null)}
+          message={successMessage || ''}
         />
       </View>
     );

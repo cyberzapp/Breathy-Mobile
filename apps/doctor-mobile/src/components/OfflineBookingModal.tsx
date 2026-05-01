@@ -26,10 +26,11 @@ interface Props {
   visible: boolean;
   onClose: () => void;
   onBooked: () => void;
+  onSuccess?: (msg: string) => void;
   initialDate?: Date;
 }
 
-export default function OfflineBookingModal({ visible, onClose, onBooked, initialDate }: Props) {
+export default function OfflineBookingModal({ visible, onClose, onBooked, onSuccess, initialDate }: Props) {
   const [step, setStep] = useState<Step>('search');
   const [phone, setPhone] = useState('');
   const [patientFound, setPatientFound] = useState<any | null>(null);
@@ -138,10 +139,14 @@ export default function OfflineBookingModal({ visible, onClose, onBooked, initia
         endTime: endTime.toISOString(),
         appointmentType: apptType,
       });
-      
-      Alert.alert('Success', 'Appointment booked successfully.');
+
+      if (onSuccess) {
+        onSuccess('Appointment booked successfully.');
+      } else {
+        Alert.alert('Success', 'Appointment booked successfully.');
+        onClose();
+      }
       onBooked();
-      onClose();
     } catch (error: any) {
       Alert.alert('Booking Failed', error.message || 'Could not save appointment.');
     } finally {

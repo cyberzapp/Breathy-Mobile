@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { updateDoctorProfile } from '../../services/profileService';
+import { updateProfileStepViaApi } from '../../services/profileService';
 import { useAuthStore } from '../../store/authStore';
 
 // INDUSTRY STANDARD: Import the deterministic wrapper
@@ -20,10 +20,11 @@ const BRAND = '#22ae9e';
 interface Props {
   visible: boolean;
   onClose: () => void;
+  onSuccess?: (msg: string) => void;
   profile: any;
 }
 
-export default function AwardsMembershipsEditModal({ visible, onClose, profile }: Props) {
+export default function AwardsMembershipsEditModal({ visible, onClose, onSuccess, profile }: Props) {
   const fetchProfile = useAuthStore((s) => s.fetchProfileStatus);
 
   const [awards, setAwards] = useState<{ award_name: string; year_conferred: string }[]>(
@@ -66,16 +67,27 @@ export default function AwardsMembershipsEditModal({ visible, onClose, profile }
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const validAwards = awards.filter((a) => a.award_name.trim());
-      const validMemberships = memberships.filter((m) => m.association_name.trim());
+      const payload = {
+        awards: awards
+          .filter(a => a.award_name.trim())
+          .map(a => ({ 
+            name: a.award_name.trim(), 
+            year: a.year_conferred.trim() ? parseInt(a.year_conferred.trim(), 10) : null 
+          })),
+        memberships: memberships
+          .filter(m => m.association_name.trim())
+          .map(m => ({ organization: m.association_name.trim() })),
+      };
 
-      await updateDoctorProfile({
-        awards: validAwards,
-        memberships: validMemberships,
-      });
-      await fetchProfile();
-      Alert.alert('Success', 'Awards & memberships updated!');
-      onClose();
+      await updateProfileStepViaApi('awards_memberships', payload);
+      await fetchProfile(true);
+      
+      if (onSuccess) {
+        onSuccess('Awards & memberships updated!');
+      } else {
+        Alert.alert('Success', 'Awards & memberships updated!');
+        onClose();
+      }
     } catch (err: any) {
       Alert.alert('Error', err.message || 'Failed to update.');
     } finally {

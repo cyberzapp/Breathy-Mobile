@@ -20,6 +20,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { decode } from 'base64-arraybuffer';
 import { useColors } from '../../hooks/useColors';
 import KeyboardAwareModal from '../../components/ui/KeyboardAwareModal';
+import SuccessModal from '../../components/ui/SuccessModal';
 
 // INDUSTRY STANDARD: Import our pure native Skia component
 import { SkiaSignaturePad, SignaturePadRef } from '../../components/ui/SkiaSignaturePad';
@@ -38,6 +39,7 @@ export default function PrescriptionSettingsScreen() {
   
   // UX TRICK: Dynamically lock the scroll view when drawing
   const [scrollEnabled, setScrollEnabled] = useState(true);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const [styleData, setStyleData] = useState<any>({});
   const [selectedColor, setSelectedColor] = useState('#0d9488');
@@ -131,7 +133,7 @@ export default function PrescriptionSettingsScreen() {
       await updatePrescriptionStyle(payload);
       setStyleData({ ...styleData, ...payload });
       setLogoLocalUri(null);
-      Alert.alert('Success', 'Template style saved!');
+      setSuccessMessage('Template style saved!');
     } catch (e: any) {
       Alert.alert('Error', e.message || 'Failed to save style.');
     } finally {
@@ -189,7 +191,7 @@ export default function PrescriptionSettingsScreen() {
     setIsSavingLocation(true);
     try {
       await addPrescriptionLocation(locationData);
-      Alert.alert('Success', 'Location saved!');
+      setSuccessMessage('Location saved!');
       
       setShowAddLocationModal(false);
       setLocationData({ location_label: '', clinic_name: '', address_line_1: '', city: '', state: '', pincode: '', phone_number: '', email: '' });
@@ -244,7 +246,7 @@ export default function PrescriptionSettingsScreen() {
       const newUrl = await getSignatureUrl();
       setSignatureUrl(newUrl);
       setShowSignaturePad(false);
-      Alert.alert('Success', 'Signature saved!');
+      setSuccessMessage('Signature saved!');
     } catch (e: any) {
       console.error(e);
       Alert.alert('Error', 'Failed to save signature.');
@@ -292,6 +294,13 @@ export default function PrescriptionSettingsScreen() {
           </View>
           <Text style={[styles.cardSubtitle, { color: c.textTertiary }]}>Manage the clinic locations that appear on your printed prescriptions.</Text>
 
+          {locations.length === 0 && (
+            <View style={styles.alertBanner}>
+              <Ionicons name="alert-circle" size={20} color="#ef4444" />
+              <Text style={styles.alertBannerText}>Action Required: Please add at least one location to generate prescriptions.</Text>
+            </View>
+          )}
+
           {locations.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Ionicons name="location-outline" size={36} color="#cbd5e1" />
@@ -326,6 +335,13 @@ export default function PrescriptionSettingsScreen() {
             <Text style={styles.cardTitle}>Digital Signature</Text>
           </View>
           <Text style={styles.cardSubtitle}>This signature appears on all prescriptions and invoices.</Text>
+
+          {!signatureUrl && (
+            <View style={styles.alertBanner}>
+              <Ionicons name="alert-circle" size={20} color="#ef4444" />
+              <Text style={styles.alertBannerText}>Action Required: Please set up your digital signature.</Text>
+            </View>
+          )}
 
           <View style={styles.signaturePreview}>
             {signatureUrl ? (
@@ -603,6 +619,11 @@ export default function PrescriptionSettingsScreen() {
         </View>
       </KeyboardAwareModal>
 
+      <SuccessModal
+        visible={!!successMessage}
+        onClose={() => setSuccessMessage(null)}
+        message={successMessage || ''}
+      />
     </SafeAreaView>
   );
 }
@@ -620,6 +641,9 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 17, fontWeight: '700', color: '#1e293b' },
   cardSubtitle: { fontSize: 13, color: '#94a3b8', marginBottom: 14, lineHeight: 18 },
   divider: { height: 1, backgroundColor: '#f1f5f9', marginVertical: 14 },
+
+  alertBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fef2f2', padding: 12, borderRadius: 8, marginBottom: 16, gap: 8, borderWidth: 1, borderColor: '#fecaca' },
+  alertBannerText: { color: '#dc2626', fontSize: 13, fontWeight: '600', flex: 1, lineHeight: 18 },
 
   addNewBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#14b8a6', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
   addNewBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },

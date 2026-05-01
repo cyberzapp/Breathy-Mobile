@@ -20,6 +20,7 @@ import {
 } from '../../services/billingService';
 import { getOrganizations } from '../../services/organizationService';
 import { useColors } from '../../hooks/useColors';
+import SuccessModal from '../../components/ui/SuccessModal';
 
 // ---------------------------------------------------------------------------
 // BillingScreen — Fee Settings + Transaction History (Phase 2C)
@@ -112,6 +113,7 @@ function FeeSettings() {
   const [fee, setFee] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -134,7 +136,7 @@ function FeeSettings() {
     setIsSaving(true);
     try {
       await updateConsultationFee(numericFee);
-      Alert.alert('Success', 'Consultation fee updated!');
+      setSuccessMessage('Consultation fee updated!');
     } catch (err: any) {
       Alert.alert('Error', err.message || 'Failed to update fee.');
     } finally {
@@ -178,6 +180,11 @@ function FeeSettings() {
           )}
         </TouchableOpacity>
       </View>
+      <SuccessModal
+        visible={!!successMessage}
+        onClose={() => setSuccessMessage(null)}
+        message={successMessage || ''}
+      />
     </View>
   );
 }
