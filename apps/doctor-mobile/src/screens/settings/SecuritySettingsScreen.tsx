@@ -16,6 +16,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import apiClient from '../../lib/apiClient';
 import { useColors } from '../../hooks/useColors';
 import { useAuthStore } from '../../store/authStore';
+import SuccessModal from '../../components/ui/SuccessModal';
+import ErrorModal from '../../components/ui/ErrorModal';
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
 
 // ---------------------------------------------------------------------------
 // SecuritySettingsScreen — Native replica of web's SecuritySettings.jsx
@@ -63,6 +66,11 @@ export default function SecuritySettingsScreen() {
   const [histLoading, setHistLoading] = useState(true);
   const [histError, setHistError] = useState<string | null>(null);
 
+  // ── Modals State ──
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
+
   // ── Fetch Visibility ──
   useEffect(() => {
     (async () => {
@@ -95,9 +103,9 @@ export default function SecuritySettingsScreen() {
     try {
       await updateVisibility(newStatus);
       setIsOnline(value);
-      Alert.alert('Updated', `Visibility set to "${newStatus}".`);
+      setSuccessMessage(`Visibility set to "${newStatus}".`);
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to update visibility.');
+      setErrorMessage('Try again later');
     } finally {
       setVisSaving(false);
     }
@@ -105,14 +113,7 @@ export default function SecuritySettingsScreen() {
 
   // ── Handle Sign Out ──
   const handleSignOut = () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Sign Out', style: 'destructive', onPress: signOut },
-      ]
-    );
+    setShowSignOutConfirm(true);
   };
 
   return (
@@ -214,7 +215,7 @@ export default function SecuritySettingsScreen() {
           )}
         </View>
 
-        {/* ── Sign Out Button ── */}
+        {/* ── Section: Sign Out ── */}
         <TouchableOpacity
           style={[styles.signOutButton, { backgroundColor: c.errorBg || '#fef2f2', borderColor: c.errorBorder || '#fecaca' }]}
           onPress={handleSignOut}
@@ -223,6 +224,42 @@ export default function SecuritySettingsScreen() {
           <Ionicons name="log-out-outline" size={20} color={c.error || '#ef4444'} />
           <Text style={{ fontSize: 15, fontWeight: '700', color: c.error || '#ef4444' }}>Sign Out</Text>
         </TouchableOpacity>
+
+        <SuccessModal
+          visible={!!successMessage}
+          message={successMessage || ''}
+          onClose={() => setSuccessMessage(null)}
+        />
+        <ErrorModal
+          visible={!!errorMessage}
+          message={errorMessage || ''}
+          onClose={() => setErrorMessage(null)}
+          onRetry={() => {
+            setErrorMessage(null);
+            // Refresh screen logic
+            setVisLoading(true);
+            setHistLoading(true);
+            getVisibility()
+              .then((data: any) => setIsOnline(data?.on_demand_status === 'online'))
+              .finally(() => setVisLoading(false));
+            fetchLoginHistory()
+              .then((data: any) => setLoginHistory(Array.isArray(data) ? data : []))
+              .catch(() => {})
+              .finally(() => setHistLoading(false));
+          }}
+        />
+        <ConfirmationModal
+          visible={showSignOutConfirm}
+          title="Sign Out"
+          message="Are you sure you want to sign out?"
+          confirmText="Sign Out"
+          isDestructive={true}
+          onCancel={() => setShowSignOutConfirm(false)}
+          onConfirm={() => {
+            setShowSignOutConfirm(false);
+            signOut();
+          }}
+        />
       </ScrollView>
     </View>
   );

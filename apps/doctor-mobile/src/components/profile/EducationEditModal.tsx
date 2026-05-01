@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  Alert,
   ActivityIndicator
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,6 +14,8 @@ import AsyncAutocomplete from '../ui/AsyncAutocomplete';
 
 // INDUSTRY STANDARD: Import the deterministic wrapper
 import KeyboardAwareModal from '../ui/KeyboardAwareModal';
+import WarningModal from '../ui/WarningModal';
+import ErrorModal from '../ui/ErrorModal';
 
 const BRAND = '#22ae9e';
 
@@ -56,6 +57,8 @@ export default function EducationEditModal({ visible, onClose, onSuccess, profil
   
   const [isSaving, setIsSaving] = useState(false);
   const [activeInput, setActiveInput] = useState<{ index: number, field: string } | null>(null);
+  const [warningMessage, setWarningMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const addEntry = () => {
     setEntries([...entries, { degree: '', university: '', passing_year: '' }]);
@@ -75,11 +78,11 @@ export default function EducationEditModal({ visible, onClose, onSuccess, profil
   const handleSave = async () => {
     const validEntries = entries.filter((e) => e.degree.trim());
     if (validEntries.length === 0) {
-      Alert.alert('Required', 'Please add at least one qualification.');
+      setWarningMessage('Please add at least one qualification.');
       return;
     }
     if (specialties.length === 0) {
-      Alert.alert('Required', 'Please select at least one specialty.');
+      setWarningMessage('Please select at least one specialty.');
       return;
     }
     
@@ -96,17 +99,17 @@ export default function EducationEditModal({ visible, onClose, onSuccess, profil
       if (onSuccess) {
         onSuccess('Education & specialties updated!');
       } else {
-        Alert.alert('Success', 'Education & specialties updated!');
         onClose();
       }
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to update education.');
+      setErrorMessage('Failed to update education. Please try again later.');
     } finally {
       setIsSaving(false);
     }
   };
 
   return (
+    <>
     <KeyboardAwareModal visible={visible} onClose={onClose} title="Edit Education">
       {entries.map((entry, index) => (
         <View key={index} style={styles.entryCard}>
@@ -224,6 +227,17 @@ export default function EducationEditModal({ visible, onClose, onSuccess, profil
         </TouchableOpacity>
       </View>
     </KeyboardAwareModal>
+    <WarningModal
+      visible={!!warningMessage}
+      message={warningMessage || ''}
+      onClose={() => setWarningMessage(null)}
+    />
+    <ErrorModal
+      visible={!!errorMessage}
+      message={errorMessage || ''}
+      onClose={() => setErrorMessage(null)}
+    />
+  </>
   );
 }
 

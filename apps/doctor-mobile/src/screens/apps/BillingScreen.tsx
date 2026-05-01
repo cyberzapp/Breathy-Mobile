@@ -8,7 +8,6 @@ import {
   TextInput,
   ActivityIndicator,
   Modal,
-  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -21,6 +20,8 @@ import {
 import { getOrganizations } from '../../services/organizationService';
 import { useColors } from '../../hooks/useColors';
 import SuccessModal from '../../components/ui/SuccessModal';
+import WarningModal from '../../components/ui/WarningModal';
+import ErrorModal from '../../components/ui/ErrorModal';
 
 // ---------------------------------------------------------------------------
 // BillingScreen — Fee Settings + Transaction History (Phase 2C)
@@ -114,6 +115,8 @@ function FeeSettings() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [warningMessage, setWarningMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -130,7 +133,7 @@ function FeeSettings() {
   const handleSave = async () => {
     const numericFee = parseFloat(fee);
     if (isNaN(numericFee) || numericFee < 0) {
-      Alert.alert('Invalid', 'Please enter a valid, non-negative number.');
+      setWarningMessage('Please enter a valid, non-negative number.');
       return;
     }
     setIsSaving(true);
@@ -138,7 +141,7 @@ function FeeSettings() {
       await updateConsultationFee(numericFee);
       setSuccessMessage('Consultation fee updated!');
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to update fee.');
+      setErrorMessage('Failed to update fee. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -184,6 +187,16 @@ function FeeSettings() {
         visible={!!successMessage}
         onClose={() => setSuccessMessage(null)}
         message={successMessage || ''}
+      />
+      <WarningModal
+        visible={!!warningMessage}
+        message={warningMessage || ''}
+        onClose={() => setWarningMessage(null)}
+      />
+      <ErrorModal
+        visible={!!errorMessage}
+        message={errorMessage || ''}
+        onClose={() => setErrorMessage(null)}
       />
     </View>
   );

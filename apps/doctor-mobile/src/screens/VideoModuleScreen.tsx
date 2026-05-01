@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Alert, StyleSheet, ActivityIndicator } from 'react-native';
+import WarningModal from '../components/ui/WarningModal';
+import ErrorModal from '../components/ui/ErrorModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -52,6 +54,9 @@ export default function VideoModuleScreen({ route }: any) {
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [costPerMin, setCostPerMin] = useState(0.80);
     const [isConnecting, setIsConnecting] = useState(true);
+    const [warningMessage, setWarningMessage] = useState<string | null>(null);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [criticalError, setCriticalError] = useState<{title: string, message: string, actionText: string, onAction: () => void} | null>(null);
 
     useEffect(() => {
         const initCall = async () => {
@@ -80,17 +85,23 @@ export default function VideoModuleScreen({ route }: any) {
                 co.on('participant-updated', updateParticipants);
                 co.on('participant-left', updateParticipants);
                 co.on('error', (e: any) => {
-                    Alert.alert('Connection Error', e.errorMsg, [{ text: 'OK', onPress: handleEndCall }]);
+                    setCriticalError({
+                        title: 'Connection Error',
+                        message: e.errorMsg,
+                        actionText: 'OK',
+                        onAction: handleEndCall
+                    });
                 });
 
                 await co.join({ url: roomUrl, token });
             } catch (err: any) {
                 setIsConnecting(false);
-                Alert.alert(
-                    'Connection Failed', 
-                    err.message || 'Could not securely provision the video room.',
-                    [{ text: 'Go Back', onPress: () => navigation.goBack() }]
-                );
+                setCriticalError({
+                    title: 'Connection Failed',
+                    message: err.message || 'Could not securely provision the video room.',
+                    actionText: 'Go Back',
+                    onAction: () => navigation.goBack()
+                });
             }
         };
 
@@ -125,11 +136,12 @@ export default function VideoModuleScreen({ route }: any) {
         // If there is no remote participant (patient hasn't joined)
         if (!remoteParticipant) {
             timeoutId = setTimeout(() => {
-                Alert.alert(
-                    "Patient No-Show", 
-                    "The patient did not join in time. Ending call to save limits.",
-                    [{ text: "OK", onPress: handleEndCall }]
-                );
+                setCriticalError({
+                    title: 'Patient No-Show',
+                    message: 'The patient did not join in time. Ending call to save limits.',
+                    actionText: 'OK',
+                    onAction: handleEndCall
+                });
             }, 5 * 60 * 1000); // 5 minutes
         }
 
@@ -147,10 +159,10 @@ export default function VideoModuleScreen({ route }: any) {
             setShowPaymentModal(true);
         } else if (result.status === 'allowed' && result.mode === 'paid' && !isPaidMode) {
             setIsPaidMode(true);
-            Alert.alert('Paid Mode', `Switched to Paid Mode (₹${result.charged}/min)`);
+            setWarningMessage(`Switched to Paid Mode (₹${result.charged}/min)`);
         } else if (result.status === 'cut') {
             handleEndCall();
-            Alert.alert('Call Ended', result.message || "Insufficient funds.");
+            setErrorMessage(result.message || 'Call ended due to insufficient funds.');
         }
     };
 
@@ -255,6 +267,27 @@ export default function VideoModuleScreen({ route }: any) {
                     </View>
                 </View>
             )}
+
+            <WarningModal
+                visible={!!warningMessage}
+                message={warningMessage || ''}
+                onClose={() => setWarningMessage(null)}
+            />
+            <ErrorModal
+                visible={!!errorMessage}
+                message={errorMessage || ''}
+                onClose={() => setErrorMessage(null)}
+            />
+            <ErrorModal
+                visible={!!criticalError}
+                title={criticalError?.title}
+                message={criticalError?.message || ''}
+                closeText={criticalError?.actionText}
+                onClose={() => {
+                    if (criticalError) criticalError.onAction();
+                    setCriticalError(null);
+                }}
+            />
         </SafeAreaView>
     );
 }

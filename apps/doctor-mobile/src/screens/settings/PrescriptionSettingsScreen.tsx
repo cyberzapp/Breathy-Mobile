@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, Switch, ScrollView,
-  TouchableOpacity, ActivityIndicator, Alert, TextInput,
+  TouchableOpacity, ActivityIndicator, TextInput,
   Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -21,6 +21,9 @@ import { decode } from 'base64-arraybuffer';
 import { useColors } from '../../hooks/useColors';
 import KeyboardAwareModal from '../../components/ui/KeyboardAwareModal';
 import SuccessModal from '../../components/ui/SuccessModal';
+import ErrorModal from '../../components/ui/ErrorModal';
+import WarningModal from '../../components/ui/WarningModal';
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
 
 // INDUSTRY STANDARD: Import our pure native Skia component
 import { SkiaSignaturePad, SignaturePadRef } from '../../components/ui/SkiaSignaturePad';
@@ -40,6 +43,9 @@ export default function PrescriptionSettingsScreen() {
   // UX TRICK: Dynamically lock the scroll view when drawing
   const [scrollEnabled, setScrollEnabled] = useState(true);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [warningMessage, setWarningMessage] = useState<string | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
 
   const [styleData, setStyleData] = useState<any>({});
   const [selectedColor, setSelectedColor] = useState('#0d9488');
@@ -135,7 +141,7 @@ export default function PrescriptionSettingsScreen() {
       setLogoLocalUri(null);
       setSuccessMessage('Template style saved!');
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'Failed to save style.');
+      setErrorMessage('Failed to save style. Please try again later.');
     } finally {
       setSavingStyle(false);
     }
@@ -165,28 +171,28 @@ export default function PrescriptionSettingsScreen() {
   };
 
   const handleDeleteLocation = (id: string, label: string) => {
-    Alert.alert('Delete Location', `Remove "${label}"?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete', style: 'destructive',
-        onPress: async () => {
-          try { await deletePrescriptionLocation(id); setLocations(p => p.filter(l => l.id !== id)); }
-          catch (e: any) { Alert.alert('Error', e.message); }
-        },
+    setConfirmModal({
+      title: 'Delete Location',
+      message: `Remove "${label}"?`,
+      onConfirm: async () => {
+        setConfirmModal(null);
+        try { await deletePrescriptionLocation(id); setLocations(p => p.filter(l => l.id !== id)); }
+        catch (e: any) { setErrorMessage('Failed to delete location. Please try again later.'); }
       },
-    ]);
+    });
   };
 
   const handleSetDefault = async (id: string) => {
     try {
       await setDefaultPrescriptionLocation(id);
       setLocations(p => p.map(l => ({ ...l, is_default: l.id === id })));
-    } catch (e: any) { Alert.alert('Error', e.message); }
+    } catch (e: any) { setErrorMessage('Failed to set default location. Please try again later.'); }
   };
 
   const handleSaveLocation = async () => {
     if (!locationData.location_label || !locationData.clinic_name || !locationData.address_line_1) {
-      return Alert.alert('Missing Fields', 'Please provide Label, Clinic Name, and Address.');
+      setWarningMessage('Please provide Label, Clinic Name, and Address.');
+      return;
     }
     setIsSavingLocation(true);
     try {
@@ -199,23 +205,22 @@ export default function PrescriptionSettingsScreen() {
       const locs: any = await getPrescriptionLocations();
       setLocations(Array.isArray(locs) ? locs : []);
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'Failed to save location.');
+      setErrorMessage('Failed to save location. Please try again later.');
     } finally {
       setIsSavingLocation(false);
     }
   };
 
   const handleDeleteTemplate = (id: string, name: string) => {
-    Alert.alert('Delete Template', `Delete "${name}"?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete', style: 'destructive',
-        onPress: async () => {
-          try { await deleteTemplate(id); setTemplates(p => p.filter(t => t.id !== id)); }
-          catch (e: any) { Alert.alert('Error', e.message); }
-        },
+    setConfirmModal({
+      title: 'Delete Template',
+      message: `Delete "${name}"?`,
+      onConfirm: async () => {
+        setConfirmModal(null);
+        try { await deleteTemplate(id); setTemplates(p => p.filter(t => t.id !== id)); }
+        catch (e: any) { setErrorMessage('Failed to delete template. Please try again later.'); }
       },
-    ]);
+    });
   };
 
   // Triggered by our custom Skia component
@@ -224,7 +229,7 @@ export default function PrescriptionSettingsScreen() {
     const base64Data = signatureRef.current?.getBase64();
     
     if (!base64Data) {
-      Alert.alert('Error', 'Please draw a signature first.');
+      setWarningMessage('Please draw a signature first.');
       return;
     }
 
@@ -249,7 +254,7 @@ export default function PrescriptionSettingsScreen() {
       setSuccessMessage('Signature saved!');
     } catch (e: any) {
       console.error(e);
-      Alert.alert('Error', 'Failed to save signature.');
+      setErrorMessage('Failed to save signature. Please try again later.');
     } finally {
       setIsUploading(false);
     }
@@ -623,6 +628,25 @@ export default function PrescriptionSettingsScreen() {
         visible={!!successMessage}
         onClose={() => setSuccessMessage(null)}
         message={successMessage || ''}
+      />
+      <ErrorModal
+        visible={!!errorMessage}
+        message={errorMessage || ''}
+        onClose={() => setErrorMessage(null)}
+      />
+      <WarningModal
+        visible={!!warningMessage}
+        message={warningMessage || ''}
+        onClose={() => setWarningMessage(null)}
+      />
+      <ConfirmationModal
+        visible={!!confirmModal}
+        title={confirmModal?.title || ''}
+        message={confirmModal?.message || ''}
+        confirmText="Delete"
+        isDestructive={true}
+        onCancel={() => setConfirmModal(null)}
+        onConfirm={() => confirmModal?.onConfirm()}
       />
     </SafeAreaView>
   );

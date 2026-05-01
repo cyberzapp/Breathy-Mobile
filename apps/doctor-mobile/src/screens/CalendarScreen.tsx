@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-  Alert,
   Modal,
   Dimensions,
 } from 'react-native';
@@ -22,6 +21,7 @@ import {
 import { useColors } from '../hooks/useColors';
 import { Screen } from '../components/Screen';
 import SuccessModal from '../components/ui/SuccessModal';
+import ErrorModal from '../components/ui/ErrorModal';
 // ---------------------------------------------------------------------------
 // CalendarScreen — Full native calendar with month grid + day agenda
 // ---------------------------------------------------------------------------
@@ -56,6 +56,7 @@ export default function CalendarScreen() {
   const [actionLoading, setActionLoading] = useState(false);
   const [showOfflineBooking, setShowOfflineBooking] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const c = useColors();
   const insets = useSafeAreaInsets();
 
@@ -150,7 +151,7 @@ export default function CalendarScreen() {
       setInspectorEvent(null);
       await fetchEvents();
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to update status');
+      setErrorMessage('Failed to update appointment status. Please try again.');
     } finally {
       setActionLoading(false);
     }
@@ -334,6 +335,11 @@ export default function CalendarScreen() {
           visible={!!successMessage}
           onClose={() => setSuccessMessage(null)}
           message={successMessage || ''}
+        />
+        <ErrorModal
+          visible={!!errorMessage}
+          message={errorMessage || ''}
+          onClose={() => setErrorMessage(null)}
         />
       </View>
     </Screen>

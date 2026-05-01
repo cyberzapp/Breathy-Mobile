@@ -4,7 +4,6 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   ActivityIndicator,
   ScrollView,
   TextInput,
@@ -22,6 +21,9 @@ import { useColors } from '../../hooks/useColors';
 import { useBreathySounds } from '../../hooks/useBreathySounds';
 import { isOnline } from '../../services/offlineCacheService';
 import { instantFreehandExtract } from '../../services/prescriptionService';
+import WarningModal from '../../components/ui/WarningModal';
+import ErrorModal from '../../components/ui/ErrorModal';
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
 
 // ---------------------------------------------------------------------------
 // FreehandCanvasScreen — Native Skia Drawing Canvas
@@ -51,6 +53,9 @@ export default function FreehandCanvasScreen() {
   const [diagnosis, setDiagnosis] = useState('');
   const [icdCode, setIcdCode] = useState('');
   const [followUp, setFollowUp] = useState('');
+  const [warningMessage, setWarningMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   // --- Drawing State ---
   const [completedStrokes, setCompletedStrokes] = useState<Stroke[]>([]);
@@ -94,15 +99,15 @@ export default function FreehandCanvasScreen() {
   };
 
   const handleClear = () => {
-    Alert.alert('Clear Canvas', 'Erase everything?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Clear', style: 'destructive', onPress: () => {
-          setCompletedStrokes([]);
-          scale.value = 1; savedScale.value = 1;
-          translateX.value = 0; savedTranslateX.value = 0;
-          translateY.value = 0; savedTranslateY.value = 0;
-      }},
-    ]);
+    setShowClearConfirm(true);
+  };
+
+  const doClear = () => {
+    setShowClearConfirm(false);
+    setCompletedStrokes([]);
+    scale.value = 1; savedScale.value = 1;
+    translateX.value = 0; savedTranslateX.value = 0;
+    translateY.value = 0; savedTranslateY.value = 0;
   };
 
   const handleUndo = () => {
@@ -136,24 +141,20 @@ export default function FreehandCanvasScreen() {
 
   const handleReview = useCallback(async () => {
     if (completedStrokes.length === 0) {
-      Alert.alert('Empty Canvas', 'Please write your prescription before reviewing.');
+      setWarningMessage('Please write your prescription before reviewing.');
       return;
     }
 
     const image = canvasRef.current?.makeImageSnapshot();
     if (!image) {
-      Alert.alert('Error', 'Failed to capture drawing.');
+      setErrorMessage('Failed to capture drawing.');
       return;
     }
     const base64Data = image.encodeToBase64();
 
     const online = await isOnline();
     if (!online) {
-      Alert.alert(
-        '📤 Saved to Outbox',
-        'Your drawing has been saved locally. It will be processed by AI when you reconnect.',
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
-      );
+      setWarningMessage('Your drawing has been saved locally. It will be processed by AI when you reconnect.');
       return;
     }
 
@@ -182,7 +183,7 @@ export default function FreehandCanvasScreen() {
       });
     } catch (err: any) {
       playError();
-      Alert.alert('AI Extraction Failed', err.message || 'Could not process your handwriting.');
+      setErrorMessage('Could not process your handwriting. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -466,6 +467,25 @@ export default function FreehandCanvasScreen() {
       {sideToolbarNode}
       {sliderPopoverNode}
       {footerToolbarNode}
+      <WarningModal
+        visible={!!warningMessage}
+        message={warningMessage || ''}
+        onClose={() => setWarningMessage(null)}
+      />
+      <ErrorModal
+        visible={!!errorMessage}
+        message={errorMessage || ''}
+        onClose={() => setErrorMessage(null)}
+      />
+      <ConfirmationModal
+        visible={showClearConfirm}
+        title="Clear Canvas"
+        message="Erase everything?"
+        confirmText="Clear"
+        isDestructive={true}
+        onCancel={() => setShowClearConfirm(false)}
+        onConfirm={doClear}
+      />
     </View>
   );
 }

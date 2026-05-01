@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, Switch, ScrollView,
-  TouchableOpacity, ActivityIndicator, TextInput, Alert
+  TouchableOpacity, ActivityIndicator, TextInput
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,7 @@ import { getSchedules, updateSchedules, updateSearchVisibility } from '../../ser
 import { useAuthStore } from '../../store/authStore';
 import { useColors } from '../../hooks/useColors';
 import SuccessModal from '../../components/ui/SuccessModal';
+import ErrorModal from '../../components/ui/ErrorModal';
 
 // ---------------------------------------------------------------------------
 // Day helpers — mirrors web AvailabilityEditor.jsx exactly
@@ -46,6 +47,7 @@ export default function AvailabilitySettingsScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isVisible, setIsVisible] = useState(profileStatus?.is_visible ?? true);
 
   // Schedule state — mirrors web exactly
@@ -154,7 +156,7 @@ export default function AvailabilitySettingsScreen() {
       await updateSchedules({ p_organization_schedules, p_video_schedules });
       setShowSuccess(true);
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'Failed to save schedules.');
+      setErrorMessage('Failed to save schedules. Please try again later.');
     } finally {
       setSaving(false);
     }
@@ -292,6 +294,11 @@ export default function AvailabilitySettingsScreen() {
           navigation.goBack();
         }}
         message="Schedule updated successfully!"
+      />
+      <ErrorModal
+        visible={!!errorMessage}
+        message={errorMessage || ''}
+        onClose={() => setErrorMessage(null)}
       />
     </SafeAreaView>
   );

@@ -21,6 +21,8 @@ import {
   searchMedicalCouncils,
 } from '../services/profileService';
 import { useOnboardingSubmit } from '../hooks/useOnboardingSubmit';
+import ErrorModal from '../components/ui/ErrorModal';
+import WarningModal from '../components/ui/WarningModal';
 
 // --- Sub-components (Memoized for performance) ---
 
@@ -245,7 +247,7 @@ const MedicalRegistrationSection = React.memo(({
 
 export default function NativeOnboardingScreen() {
   const c = useColors();
-  const { submitProfile, isSubmitting } = useOnboardingSubmit();
+  const { submitProfile, isSubmitting, submitError, setSubmitError, submitWarning, setSubmitWarning } = useOnboardingSubmit();
 
   const keyboardHeight = useRef(new Animated.Value(0)).current;
 
@@ -386,6 +388,16 @@ export default function NativeOnboardingScreen() {
           </TouchableOpacity>
         </View>
       </Animated.View>
+      <WarningModal
+        visible={!!submitWarning}
+        message={submitWarning || ''}
+        onClose={() => setSubmitWarning(null)}
+      />
+      <ErrorModal
+        visible={!!submitError}
+        message={submitError || ''}
+        onClose={() => setSubmitError(null)}
+      />
     </SafeAreaView>
   );
 }

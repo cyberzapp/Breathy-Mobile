@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   Modal,
   ScrollView,
-  Alert,
   Linking,
   Keyboard,
 } from 'react-native';
@@ -33,6 +32,7 @@ import {
   getCachedPrescriptionDetail,
   isOnline,
 } from '../services/offlineCacheService';
+import WarningModal from '../components/ui/WarningModal';
 
 const BRAND = '#14b8a6';
 
@@ -466,6 +466,7 @@ function PrescriptionDetailModal({
   const [error, setError] = useState<string | null>(null);
   const [offline, setOffline] = useState(false);
   const c = useColors();
+  const [warningMessage, setWarningMessage] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -506,11 +507,12 @@ function PrescriptionDetailModal({
     if (data?.download_url) {
       Linking.openURL(data.download_url);
     } else {
-      Alert.alert('Not Available', 'PDF download is not available for this prescription.');
+      setWarningMessage('PDF download is not available for this prescription.');
     }
   };
 
   return (
+    <>
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
       <View style={[styles.modalOverlay, { backgroundColor: c.overlay }]}>
         <View style={[styles.modalContent, { backgroundColor: c.card }]}>
@@ -619,6 +621,12 @@ function PrescriptionDetailModal({
         </View>
       </View>
     </Modal>
+    <WarningModal
+      visible={!!warningMessage}
+      message={warningMessage || ''}
+      onClose={() => setWarningMessage(null)}
+    />
+  </>
   );
 }
 

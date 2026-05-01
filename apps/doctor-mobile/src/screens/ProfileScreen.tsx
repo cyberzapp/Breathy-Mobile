@@ -9,7 +9,6 @@ import {
   Image,
   Share,
   Linking,
-  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -22,6 +21,8 @@ import EducationEditModal from '../components/profile/EducationEditModal';
 import AwardsMembershipsEditModal from '../components/profile/AwardsMembershipsEditModal';
 import ProfilePhotoEditor from '../components/profile/ProfilePhotoEditor';
 import SuccessModal from '../components/ui/SuccessModal';
+import ErrorModal from '../components/ui/ErrorModal';
+import WarningModal from '../components/ui/WarningModal';
 import { useColors } from '../hooks/useColors';
 import { isOnline } from '../services/offlineCacheService';
 import { Screen } from '../components/Screen';
@@ -117,6 +118,8 @@ export default function ProfileScreen() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [viewCount, setViewCount] = useState<number | null>(null);
   const [offline, setOffline] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [warningMessage, setWarningMessage] = useState<string | null>(null);
 
   const profileStrength = calculateProfileStrength(profile);
 
@@ -159,7 +162,7 @@ export default function ProfileScreen() {
       });
     } catch (err) {
       console.error('[Profile] Share failed:', err);
-      Alert.alert('Error', 'Could not open share menu.');
+      setErrorMessage('Could not open share menu.');
     }
   };
 
@@ -259,7 +262,7 @@ export default function ProfileScreen() {
               ]}
               onPress={() => {
                 if (offline) {
-                  Alert.alert('Offline', 'Connect to the internet to edit your profile.');
+                  setWarningMessage('Connect to the internet to edit your profile.');
                   return;
                 }
                 setIsEditing(!isEditing);
@@ -452,6 +455,16 @@ export default function ProfileScreen() {
         visible={!!successMessage}
         onClose={() => setSuccessMessage(null)}
         message={successMessage || ''}
+      />
+      <ErrorModal
+        visible={!!errorMessage}
+        message={errorMessage || ''}
+        onClose={() => setErrorMessage(null)}
+      />
+      <WarningModal
+        visible={!!warningMessage}
+        message={warningMessage || ''}
+        onClose={() => setWarningMessage(null)}
       />
     </View>
   );

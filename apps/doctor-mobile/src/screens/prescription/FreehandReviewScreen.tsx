@@ -6,7 +6,6 @@ import {
   ScrollView,
   TextInput,
   StyleSheet,
-  Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
@@ -42,6 +41,9 @@ import NameAutocomplete from '../../components/prescription/NameAutocomplete';
 import PatientSelectModal from '../../components/prescription/PatientSelectModal';
 import MoreOptionsModal from '../../components/prescription/MoreOptionsModal';
 import SaveTemplateModal from '../../components/prescription/SaveTemplateModal';
+import SuccessModal from '../../components/ui/SuccessModal';
+import WarningModal from '../../components/ui/WarningModal';
+import ErrorModal from '../../components/ui/ErrorModal';
 
 // ---------------------------------------------------------------------------
 // FreehandReviewScreen — Post-AI-extraction review form
@@ -98,6 +100,9 @@ export default function FreehandReviewScreen() {
   const [baseDefaultAdvice, setBaseDefaultAdvice] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [warningMessage, setWarningMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const drugSearch = useDrugSearch();
   const testSearch = useTestSearch();
@@ -240,15 +245,15 @@ export default function FreehandReviewScreen() {
         medications: medications.filter((m) => m.name),
         investigations: investigations.filter(Boolean).map((n) => ({ name: n })),
       });
-      Alert.alert('Saved', `Template "${name}" saved.`);
+      setSuccessMessage(`Template "${name}" saved.`);
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to save template.');
+      setErrorMessage('Failed to save template. Please try again.');
     }
   };
 
   const handleAISuggest = async () => {
     if (!diagnosis) {
-      Alert.alert('Required', 'Please enter a diagnosis first.');
+      setWarningMessage('Please enter a diagnosis first.');
       return;
     }
     setIsAISuggesting(true);
@@ -263,7 +268,7 @@ export default function FreehandReviewScreen() {
         setInvestigations(data.investigations.map((i: any) => i.test_name || i.name || ''));
       }
     } catch (err: any) {
-      Alert.alert('AI Error', err.message || 'Could not fetch suggestions.');
+      setErrorMessage('Could not fetch AI suggestions. Please try again.');
     } finally {
       setIsAISuggesting(false);
     }
@@ -272,8 +277,8 @@ export default function FreehandReviewScreen() {
   // --- Submit ---
   const handleSubmit = async () => {
     const fullName = `${patientFirstName} ${patientSurname}`.trim();
-    if (!fullName) { Alert.alert('Required', 'Patient name is required.'); return; }
-    if (patientPhone.length < 10) { Alert.alert('Required', 'Valid phone is required.'); return; }
+    if (!fullName) { setWarningMessage('Patient name is required.'); return; }
+    if (patientPhone.length < 10) { setWarningMessage('Valid phone is required.'); return; }
 
     const vitalsObj: any = {};
     Object.entries(vitals).forEach(([k, v]) => { if (v) vitalsObj[k] = v; });
@@ -316,12 +321,11 @@ export default function FreehandReviewScreen() {
     try {
       await createPrescription(payload);
       playSuccess();
-      Alert.alert('Success', 'Prescription created!', [
-        { text: 'OK', onPress: () => navigation.popToTop() },
-      ]);
+      setSuccessMessage('Prescription created!');
+      setTimeout(() => navigation.popToTop(), 1500);
     } catch (err: any) {
       playError();
-      Alert.alert('Error', err.message || 'Something went wrong. Please try again.');
+      setErrorMessage('Something went wrong. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -610,6 +614,21 @@ export default function FreehandReviewScreen() {
         visible={showSaveTemplate}
         onClose={() => setShowSaveTemplate(false)}
         onSave={handleSaveTemplate}
+      />
+      <SuccessModal
+        visible={!!successMessage}
+        message={successMessage || ''}
+        onClose={() => setSuccessMessage(null)}
+      />
+      <WarningModal
+        visible={!!warningMessage}
+        message={warningMessage || ''}
+        onClose={() => setWarningMessage(null)}
+      />
+      <ErrorModal
+        visible={!!errorMessage}
+        message={errorMessage || ''}
+        onClose={() => setErrorMessage(null)}
       />
     </KeyboardAvoidingView>
   );

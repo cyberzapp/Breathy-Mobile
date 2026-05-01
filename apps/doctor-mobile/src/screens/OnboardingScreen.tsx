@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { View, Text, StyleSheet, Dimensions, TouchableOpacity, FlatList, Alert } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppStore } from '../store/appStore';
@@ -9,6 +9,8 @@ import short from 'short-uuid';
 
 // INDUSTRY STANDARD: Import the pure native Skia component
 import { SkiaSignaturePad, SignaturePadRef } from '../components/ui/SkiaSignaturePad';
+import WarningModal from '../components/ui/WarningModal';
+import ErrorModal from '../components/ui/ErrorModal';
 
 const { width, height } = Dimensions.get('window');
 
@@ -50,6 +52,8 @@ export default function OnboardingScreen() {
   
   // UX TRICK: Lock the FlatList scroll when the user is actively drawing
   const [scrollEnabled, setScrollEnabled] = useState(true);
+  const [warningMessage, setWarningMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
   const flatListRef = useRef<FlatList>(null);
   const signatureRef = useRef<SignaturePadRef>(null);
@@ -72,7 +76,7 @@ export default function OnboardingScreen() {
     const base64Data = signatureRef.current?.getBase64();
 
     if (!base64Data) {
-      Alert.alert('Hold on', 'Please draw a signature first.');
+      setWarningMessage('Please draw a signature first.');
       return;
     }
 
@@ -102,7 +106,7 @@ export default function OnboardingScreen() {
       setHasSeenNativeOnboarding(true);
     } catch (e) {
       console.error(e);
-      Alert.alert('Error', 'Failed to save signature. You can try again later in Settings.');
+      setErrorMessage('Failed to save signature. You can try again later in Settings.');
       setHasSeenNativeOnboarding(true); // let them through anyway
     } finally {
       setIsUploading(false);
@@ -200,6 +204,16 @@ export default function OnboardingScreen() {
           </TouchableOpacity>
         )}
       </View>
+      <WarningModal
+        visible={!!warningMessage}
+        message={warningMessage || ''}
+        onClose={() => setWarningMessage(null)}
+      />
+      <ErrorModal
+        visible={!!errorMessage}
+        message={errorMessage || ''}
+        onClose={() => setErrorMessage(null)}
+      />
     </SafeAreaView>
   );
 }

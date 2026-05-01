@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,6 +13,7 @@ import { useAuthStore } from '../../store/authStore';
 
 // INDUSTRY STANDARD: Import the deterministic wrapper
 import KeyboardAwareModal from '../ui/KeyboardAwareModal';
+import ErrorModal from '../ui/ErrorModal';
 
 const BRAND = '#22ae9e';
 
@@ -45,6 +45,7 @@ export default function AwardsMembershipsEditModal({ visible, onClose, onSuccess
   );
 
   const [isSaving, setIsSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Awards CRUD
   const addAward = () => setAwards([...awards, { award_name: '', year_conferred: '' }]);
@@ -85,17 +86,17 @@ export default function AwardsMembershipsEditModal({ visible, onClose, onSuccess
       if (onSuccess) {
         onSuccess('Awards & memberships updated!');
       } else {
-        Alert.alert('Success', 'Awards & memberships updated!');
         onClose();
       }
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to update.');
+      setErrorMessage('Failed to update awards & memberships. Please try again later.');
     } finally {
       setIsSaving(false);
     }
   };
 
   return (
+    <>
     <KeyboardAwareModal visible={visible} onClose={onClose} title="Awards & Memberships">
       {/* Awards */}
       <Text style={styles.sectionLabel}>Awards</Text>
@@ -162,6 +163,12 @@ export default function AwardsMembershipsEditModal({ visible, onClose, onSuccess
         </TouchableOpacity>
       </View>
     </KeyboardAwareModal>
+    <ErrorModal
+      visible={!!errorMessage}
+      message={errorMessage || ''}
+      onClose={() => setErrorMessage(null)}
+    />
+  </>
   );
 }
 

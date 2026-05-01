@@ -13,6 +13,8 @@ import { useColors } from '../../hooks/useColors';
 // INDUSTRY STANDARD: Import our deterministic Keyboard wrapper
 import KeyboardAwareModal from '../../components/ui/KeyboardAwareModal';
 import SuccessModal from '../../components/ui/SuccessModal';
+import ErrorModal from '../../components/ui/ErrorModal';
+import WarningModal from '../../components/ui/WarningModal';
 
 export default function ReceptionistsSettingsScreen() {
   const navigation = useNavigation();
@@ -36,6 +38,8 @@ export default function ReceptionistsSettingsScreen() {
   // REPLACED BOTTOM SHEET REF WITH STANDARD MODAL STATE
   const [showAddStaffModal, setShowAddStaffModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [warningMessage, setWarningMessage] = useState<string | null>(null);
 
   useEffect(() => { fetchData(); }, []);
 
@@ -96,16 +100,18 @@ export default function ReceptionistsSettingsScreen() {
     const { error } = await supabase.from('receptionists').update({ is_active: !currentStatus }).eq('id', id);
     if (error) {
       setReceptionists(prev => prev.map(s => s.id === id ? { ...s, is_active: currentStatus } : s));
-      Alert.alert('Error', 'Failed to update status.');
+      setErrorMessage('Failed to update status.');
     }
   };
 
   const handleCreate = async () => {
     if (!formData.name.trim() || !formData.username.trim() || !formData.password.trim()) {
-      return Alert.alert('Missing Fields', 'Please fill in all fields.');
+      setWarningMessage('Please fill in all fields.');
+      return;
     }
     if (formData.password.length < 4) {
-      return Alert.alert('Weak Password', 'Password must be at least 4 characters.');
+      setWarningMessage('Password must be at least 4 characters.');
+      return;
     }
     setCreating(true);
     try {
@@ -115,7 +121,8 @@ export default function ReceptionistsSettingsScreen() {
       setShowAddStaffModal(false);
       fetchData();
     } catch (e: any) {
-      Alert.alert('Error', e.response?.data?.message || e.message || 'Failed to create receptionist.');
+      const backendError = e.response?.data?.error || e.response?.data?.message;
+      setErrorMessage(backendError || 'Unable to create the staff account right now. Please try again later.');
     } finally {
       setCreating(false);
     }
@@ -406,6 +413,16 @@ export default function ReceptionistsSettingsScreen() {
         visible={!!successMessage}
         onClose={() => setSuccessMessage(null)}
         message={successMessage || ''}
+      />
+      <ErrorModal
+        visible={!!errorMessage}
+        message={errorMessage || ''}
+        onClose={() => setErrorMessage(null)}
+      />
+      <WarningModal
+        visible={!!warningMessage}
+        message={warningMessage || ''}
+        onClose={() => setWarningMessage(null)}
       />
     </SafeAreaView>
   );

@@ -6,7 +6,6 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +16,8 @@ import { useAuthStore } from '../store/authStore';
 
 // INDUSTRY STANDARD: Import our deterministic Keyboard wrapper
 import KeyboardAwareModal from './ui/KeyboardAwareModal';
+import WarningModal from './ui/WarningModal';
+import ErrorModal from './ui/ErrorModal';
 
 const BRAND = '#22ae9e';
 
@@ -53,6 +54,8 @@ export default function OfflineBookingModal({ visible, onClose, onBooked, onSucc
   
   // Doctor Auth
   const doctorId = useAuthStore((s) => s.session?.user?.id);
+  const [warningMessage, setWarningMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Reset state when modal opens
   useEffect(() => {
@@ -73,7 +76,7 @@ export default function OfflineBookingModal({ visible, onClose, onBooked, onSucc
 
   const handleSearch = async () => {
     if (phone.length < 10) {
-      Alert.alert('Invalid Phone', 'Please enter a valid 10-digit phone number.');
+      setWarningMessage('Please enter a valid 10-digit phone number.');
       return;
     }
     
@@ -90,7 +93,7 @@ export default function OfflineBookingModal({ visible, onClose, onBooked, onSucc
         setHasSearched(true);
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to search local database.');
+      setErrorMessage('Failed to search. Please try again.');
     } finally {
       setIsSearching(false);
     }
@@ -98,7 +101,7 @@ export default function OfflineBookingModal({ visible, onClose, onBooked, onSucc
 
   const proceedWithNewPatient = async () => {
     if (!newPatientName) {
-      Alert.alert('Missing Info', 'Please enter the patient name.');
+      setWarningMessage('Please enter the patient name.');
       return;
     }
     setIsProcessing(true);
@@ -115,10 +118,10 @@ export default function OfflineBookingModal({ visible, onClose, onBooked, onSucc
         setPatientFound(results[0]);
         setStep('appointment_details');
       } else {
-        Alert.alert('Error', 'Patient created but could not be retrieved.');
+        setErrorMessage('Patient created but could not be retrieved.');
       }
     } catch (error: any) {
-      Alert.alert('Failed', error.message || 'Failed to create patient record.');
+      setErrorMessage('Failed to create patient record. Please try again.');
     } finally {
       setIsProcessing(false);
     }
@@ -143,12 +146,11 @@ export default function OfflineBookingModal({ visible, onClose, onBooked, onSucc
       if (onSuccess) {
         onSuccess('Appointment booked successfully.');
       } else {
-        Alert.alert('Success', 'Appointment booked successfully.');
         onClose();
       }
       onBooked();
     } catch (error: any) {
-      Alert.alert('Booking Failed', error.message || 'Could not save appointment.');
+      setErrorMessage('Could not save appointment. Please try again.');
     } finally {
       setIsProcessing(false);
     }
@@ -161,6 +163,7 @@ export default function OfflineBookingModal({ visible, onClose, onBooked, onSucc
     'Appointment Details';
 
   return (
+    <>
     <KeyboardAwareModal visible={visible} onClose={onClose} title={modalTitle}>
       {/* STEP 1: SEARCH */}
       {step === 'search' && (
@@ -371,6 +374,17 @@ export default function OfflineBookingModal({ visible, onClose, onBooked, onSucc
         </>
       )}
     </KeyboardAwareModal>
+    <WarningModal
+      visible={!!warningMessage}
+      message={warningMessage || ''}
+      onClose={() => setWarningMessage(null)}
+    />
+    <ErrorModal
+      visible={!!errorMessage}
+      message={errorMessage || ''}
+      onClose={() => setErrorMessage(null)}
+    />
+  </>
   );
 }
 

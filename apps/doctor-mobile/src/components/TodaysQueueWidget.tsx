@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -27,6 +26,9 @@ import {
 import AddPatientToQueueModal from './AddPatientToQueueModal';
 import VideoCallsModal from './VideoCallsModal';
 import SuccessModal from './ui/SuccessModal';
+import ErrorModal from './ui/ErrorModal';
+import ConfirmationModal from './ui/ConfirmationModal';
+import ActionSheetModal, { ActionSheetOption } from './ui/ActionSheetModal';
 
 // ---------------------------------------------------------------------------
 // TodaysQueueWidget — Native mirror of TodaysQueue.jsx + PatientsPanel
@@ -53,6 +55,10 @@ export default function TodaysQueueWidget() {
   const [showAddPatientModal, setShowAddPatientModal] = useState(false);
   const [showVideoCallsModal, setShowVideoCallsModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showEndSessionConfirm, setShowEndSessionConfirm] = useState(false);
+  const [showDelayPicker, setShowDelayPicker] = useState(false);
+  const [delayOptions, setDelayOptions] = useState<ActionSheetOption[]>([]);
 
   // ── Data Fetching ──
   const fetchAll = useCallback(async (silent = false) => {
@@ -114,7 +120,7 @@ export default function TodaysQueueWidget() {
       await startClinicSession(sessionId);
       await fetchAll(true);
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to start session');
+      setErrorMessage('Failed to start session. Please try again.');
     } finally {
       setActionLoading(null);
     }
@@ -126,7 +132,7 @@ export default function TodaysQueueWidget() {
       await startConsultation(waitlistEntryId);
       await fetchAll(true);
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to start consultation');
+      setErrorMessage('Failed to start consultation. Please try again.');
     } finally {
       setActionLoading(null);
     }
@@ -138,7 +144,7 @@ export default function TodaysQueueWidget() {
       await endConsultation(waitlistEntryId);
       await fetchAll(true);
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to end consultation');
+      setErrorMessage('Failed to end consultation. Please try again.');
     } finally {
       setActionLoading(null);
     }
@@ -150,69 +156,61 @@ export default function TodaysQueueWidget() {
       await updateWaitlistStatus(waitlistEntryId, status);
       await fetchAll(true);
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to update status');
+      setErrorMessage('Failed to update status. Please try again.');
     } finally {
       setActionLoading(null);
     }
   };
 
   const handleEndSession = () => {
-    Alert.alert(
-      'End Session',
-      'Are you sure you want to end this clinic session?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'End Session',
-          style: 'destructive',
-          onPress: async () => {
-            setActionLoading('end-session');
-            try {
-              await endClinicSession();
-              setActiveSession(null);
-              setQueue([]);
-              await fetchAll(true);
-            } catch (err: any) {
-              Alert.alert('Error', err.message || 'Failed to end session');
-            } finally {
-              setActionLoading(null);
-            }
-          },
-        },
-      ]
-    );
+    setShowEndSessionConfirm(true);
+  };
+
+  const doEndSession = async () => {
+    setShowEndSessionConfirm(false);
+    setActionLoading('end-session');
+    try {
+      await endClinicSession();
+      setActiveSession(null);
+      setQueue([]);
+      await fetchAll(true);
+    } catch (err: any) {
+      setErrorMessage('Failed to end session. Please try again.');
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   const handleAnnounceDelay = (session: AvailableSession) => {
     const delays = [10, 15, 20, 30, 45, 60];
-    const buttons = delays.map((min) => ({
-      text: `${min} min`,
+    const opts: ActionSheetOption[] = delays.map((min) => ({
+      label: `${min} min`,
       onPress: async () => {
         try {
           await announceDelay(session.id, min);
           await fetchAll(true);
         } catch (err: any) {
-          Alert.alert('Error', err.message || 'Failed to update delay');
+          setErrorMessage('Failed to update delay. Please try again.');
         }
       },
     }));
 
     if (session.delay_minutes > 0) {
-      buttons.unshift({
-        text: '✓ On Time',
+      opts.unshift({
+        label: '✓ On Time',
         onPress: async () => {
           try {
             await announceDelay(session.id, 0);
             await fetchAll(true);
           } catch (err: any) {
-            Alert.alert('Error', err.message);
+            setErrorMessage('Failed to update delay. Please try again.');
           }
         },
       });
     }
 
-    buttons.push({ text: 'Cancel', onPress: async () => {} });
-    Alert.alert('Update Delay', 'Set total delay time (patients will be notified):', buttons);
+    setDelayOptions(opts);
+    setShowDelayPicker(true);
   };
 
   // ── Loading ──
@@ -336,11 +334,33 @@ export default function TodaysQueueWidget() {
           visible={showVideoCallsModal}
           onClose={() => setShowVideoCallsModal(false)}
         />
-        
+
         <SuccessModal
           visible={!!successMessage}
           onClose={() => setSuccessMessage(null)}
           message={successMessage || ''}
+        />
+        <ErrorModal
+          visible={!!errorMessage}
+          message={errorMessage || ''}
+          onClose={() => setErrorMessage(null)}
+        />
+        <ConfirmationModal
+          visible={showEndSessionConfirm}
+          title="End Clinic Session"
+          message="Are you sure you want to end today's session? This will clear the active queue."
+          confirmText="End Session"
+          isDestructive={true}
+          onCancel={() => setShowEndSessionConfirm(false)}
+          onConfirm={doEndSession}
+        />
+
+        <ActionSheetModal
+          visible={showDelayPicker}
+          title="Update Delay"
+          message="Set total delay time (patients will be notified):"
+          options={delayOptions}
+          onCancel={() => setShowDelayPicker(false)}
         />
       </View>
     );

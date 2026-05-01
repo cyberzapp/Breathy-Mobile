@@ -7,12 +7,13 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   FlatList,
-  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getTodaysVideoAppointments, updateWaitlistStatus } from '../services/queueService';
 import { updateAppointmentStatus } from '../services/calendarService';
 import VideoAppointmentModal from './VideoAppointmentModal';
+import ErrorModal from './ui/ErrorModal';
+import ConfirmationModal from './ui/ConfirmationModal';
 
 const BRAND = '#22ae9e';
 
@@ -27,6 +28,8 @@ export default function VideoCallsModal({ visible, onClose }: Props) {
   const [refreshing, setRefreshing] = useState(false);
 
   const [selectedAppt, setSelectedAppt] = useState<any | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [statusConfirm, setStatusConfirm] = useState<{ id: string; status: string; label: string } | null>(null);
 
   const fetchCalls = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setIsLoading(true);
@@ -37,7 +40,7 @@ export default function VideoCallsModal({ visible, onClose }: Props) {
       setVideoCalls(data || []);
     } catch (error: any) {
       console.error('[VideoCalls] Fetch error:', error);
-      Alert.alert('Error', error.message || 'Failed to fetch video calls.');
+      setErrorMessage('Unable to load video calls right now. Please try again.');
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -57,7 +60,7 @@ export default function VideoCallsModal({ visible, onClose }: Props) {
       await updateAppointmentStatus(appointmentId, status);
       fetchCalls(true);
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to update status.');
+      setErrorMessage('Unable to update call status. Please try again.');
     }
   };
 
@@ -103,11 +106,7 @@ export default function VideoCallsModal({ visible, onClose }: Props) {
               <TouchableOpacity
                 style={styles.iconBtn}
                 onPress={() => {
-                  Alert.alert('Update Status', 'Mark this call as:', [
-                    { text: 'Completed', onPress: () => handleStatusChange(item.id, 'completed') },
-                    { text: 'No-Show', style: 'destructive', onPress: () => handleStatusChange(item.id, 'no-show') },
-                    { text: 'Cancel', style: 'cancel' }
-                  ]);
+                  setStatusConfirm({ id: item.id, status: 'completed', label: 'Mark as Completed' });
                 }}
               >
                 <Ionicons name="ellipsis-vertical" size={20} color="#64748b" />
@@ -159,7 +158,6 @@ export default function VideoCallsModal({ visible, onClose }: Props) {
         </View>
       </Modal>
 
-      {/* Internal Room Modal */}
       {selectedAppt && (
         <VideoAppointmentModal
           visible={!!selectedAppt}
@@ -167,6 +165,23 @@ export default function VideoCallsModal({ visible, onClose }: Props) {
           onClose={() => setSelectedAppt(null)}
         />
       )}
+      <ErrorModal
+        visible={!!errorMessage}
+        message={errorMessage || ''}
+        onClose={() => setErrorMessage(null)}
+      />
+      <ConfirmationModal
+        visible={!!statusConfirm}
+        title="Update Status"
+        message={`Mark this call as ${statusConfirm?.label || ''}?`}
+        confirmText={statusConfirm?.status === 'no-show' ? 'No-Show' : 'Complete'}
+        isDestructive={statusConfirm?.status === 'no-show'}
+        onCancel={() => setStatusConfirm(null)}
+        onConfirm={() => {
+          if (statusConfirm) handleStatusChange(statusConfirm.id, statusConfirm.status);
+          setStatusConfirm(null);
+        }}
+      />
     </>
   );
 }

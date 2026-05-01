@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   Image,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -17,6 +16,9 @@ import { decode } from 'base64-arraybuffer';
 
 // INDUSTRY STANDARD: Import the deterministic wrapper
 import KeyboardAwareModal from '../ui/KeyboardAwareModal';
+import WarningModal from '../ui/WarningModal';
+import ErrorModal from '../ui/ErrorModal';
+import ConfirmationModal from '../ui/ConfirmationModal';
 
 const BRAND = '#22ae9e';
 
@@ -33,6 +35,9 @@ export default function ProfilePhotoEditor({ visible, onClose, onSuccess, curren
   const [selectedAsset, setSelectedAsset] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
+  const [warningMessage, setWarningMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
 
   const pickImage = async (source: 'gallery' | 'camera') => {
     try {
@@ -50,14 +55,14 @@ export default function ProfilePhotoEditor({ visible, onClose, onSuccess, curren
       if (source === 'camera') {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
-          Alert.alert('Permission needed', 'Camera permission is required to take a photo.');
+          setWarningMessage('Camera permission is required to take a photo.');
           return;
         }
         result = await ImagePicker.launchCameraAsync(options);
       } else {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') {
-          Alert.alert('Permission needed', 'Gallery permission is required to select a photo.');
+          setWarningMessage('Gallery permission is required to select a photo.');
           return;
         }
         result = await ImagePicker.launchImageLibraryAsync(options);
@@ -69,14 +74,14 @@ export default function ProfilePhotoEditor({ visible, onClose, onSuccess, curren
         setSelectedAsset(asset);
       }
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to pick image.');
+      setErrorMessage('Failed to pick image. Please try again.');
     }
   };
 
   const handleSave = async () => {
     // Ensure base64 data exists before attempting save
     if (!selectedAsset || !selectedAsset.base64) {
-      Alert.alert('No change', 'Please select a new photo first.');
+      setWarningMessage('Please select a new photo first.');
       return;
     }
     setIsSaving(true);
@@ -106,50 +111,41 @@ export default function ProfilePhotoEditor({ visible, onClose, onSuccess, curren
       if (onSuccess) {
         onSuccess('Profile photo updated!');
       } else {
-        Alert.alert('Success', 'Profile photo updated!');
         onClose();
       }
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to save photo.');
+      setErrorMessage('Failed to save photo. Please try again.');
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleRemove = () => {
-    Alert.alert(
-      'Remove Profile Photo',
-      'Are you sure you want to permanently remove your profile photo?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Yes, Remove',
-          style: 'destructive',
-          onPress: async () => {
-            setIsRemoving(true);
-            try {
-              await removeProfilePhoto();
-              await fetchProfile(true);
-              if (onSuccess) {
-                onSuccess('Profile photo removed.');
-              } else {
-                Alert.alert('Done', 'Profile photo removed.');
-                onClose();
-              }
-            } catch (err: any) {
-              Alert.alert('Error', err.message || 'Failed to remove photo.');
-            } finally {
-              setIsRemoving(false);
-            }
-          },
-        },
-      ]
-    );
+    setShowRemoveConfirm(true);
+  };
+
+  const doRemove = async () => {
+    setShowRemoveConfirm(false);
+    setIsRemoving(true);
+    try {
+      await removeProfilePhoto();
+      await fetchProfile(true);
+      if (onSuccess) {
+        onSuccess('Profile photo removed.');
+      } else {
+        onClose();
+      }
+    } catch (err: any) {
+      setErrorMessage('Failed to remove photo. Please try again.');
+    } finally {
+      setIsRemoving(false);
+    }
   };
 
   const isProcessing = isSaving || isRemoving;
 
   return (
+    <>
     <KeyboardAwareModal visible={visible} onClose={onClose} title="Edit Profile Photo">
       {/* Preview Area */}
       <View style={styles.previewArea}>
@@ -220,6 +216,26 @@ export default function ProfilePhotoEditor({ visible, onClose, onSuccess, curren
         </View>
       </View>
     </KeyboardAwareModal>
+    <WarningModal
+      visible={!!warningMessage}
+      message={warningMessage || ''}
+      onClose={() => setWarningMessage(null)}
+    />
+    <ErrorModal
+      visible={!!errorMessage}
+      message={errorMessage || ''}
+      onClose={() => setErrorMessage(null)}
+    />
+    <ConfirmationModal
+      visible={showRemoveConfirm}
+      title="Remove Profile Photo"
+      message="Are you sure you want to permanently remove your profile photo?"
+      confirmText="Yes, Remove"
+      isDestructive={true}
+      onCancel={() => setShowRemoveConfirm(false)}
+      onConfirm={doRemove}
+    />
+  </>
   );
 }
 

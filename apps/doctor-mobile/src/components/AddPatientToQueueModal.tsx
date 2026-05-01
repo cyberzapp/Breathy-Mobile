@@ -6,7 +6,6 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -15,6 +14,8 @@ import {
 } from '../services/queueService';
 // Import your new wrapper!
 import KeyboardAwareModal from '../components/ui/KeyboardAwareModal';
+import WarningModal from '../components/ui/WarningModal';
+import ErrorModal from '../components/ui/ErrorModal';
 
 const BRAND = '#22ae9e';
 type Step = 'search' | 'create';
@@ -37,6 +38,8 @@ export default function AddPatientToQueueModal({ visible, onClose, onAdded, onSu
 
   const [newPatientName, setNewPatientName] = useState('');
   const [newPatientGender, setNewPatientGender] = useState('other');
+  const [warningMessage, setWarningMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (visible) {
@@ -51,7 +54,7 @@ export default function AddPatientToQueueModal({ visible, onClose, onAdded, onSu
 
   const handleSearch = async () => {
     if (phone.length < 10) {
-      Alert.alert('Invalid Phone', 'Please enter a valid 10-digit phone number.');
+      setWarningMessage('Please enter a valid 10-digit phone number.');
       return;
     }
 
@@ -65,7 +68,7 @@ export default function AddPatientToQueueModal({ visible, onClose, onAdded, onSu
         setHasSearched(true);
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to search phone number');
+      setErrorMessage('Failed to search phone number. Please try again.');
     } finally {
       setIsSearching(false);
     }
@@ -78,7 +81,7 @@ export default function AddPatientToQueueModal({ visible, onClose, onAdded, onSu
         await addWalkInPatient({ patientId: patientFound.id });
       } else {
         if (!newPatientName) {
-          Alert.alert('Missing Info', 'Please enter the patient name.');
+          setWarningMessage('Please enter the patient name.');
           setIsAdding(false);
           return;
         }
@@ -95,13 +98,14 @@ export default function AddPatientToQueueModal({ visible, onClose, onAdded, onSu
       }
       onAdded();
     } catch (error: any) {
-      Alert.alert('Failed', error.message || 'Failed to add patient to queue.');
+      setErrorMessage('Failed to add patient to queue. Please try again.');
     } finally {
       setIsAdding(false);
     }
   };
 
   return (
+    <>
     <KeyboardAwareModal 
       visible={visible} 
       onClose={onClose} 
@@ -212,6 +216,17 @@ export default function AddPatientToQueueModal({ visible, onClose, onAdded, onSu
         </>
       )}
     </KeyboardAwareModal>
+    <WarningModal
+      visible={!!warningMessage}
+      message={warningMessage || ''}
+      onClose={() => setWarningMessage(null)}
+    />
+    <ErrorModal
+      visible={!!errorMessage}
+      message={errorMessage || ''}
+      onClose={() => setErrorMessage(null)}
+    />
+  </>
   );
 }
 

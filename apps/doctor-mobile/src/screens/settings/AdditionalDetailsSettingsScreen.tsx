@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,6 +22,7 @@ import {
 } from '../../services/profileService';
 import AsyncAutocomplete from '../../components/ui/AsyncAutocomplete';
 import SuccessModal from '../../components/ui/SuccessModal';
+import ErrorModal from '../../components/ui/ErrorModal';
 
 export default function AdditionalDetailsSettingsScreen() {
   const c = useColors();
@@ -49,6 +49,7 @@ export default function AdditionalDetailsSettingsScreen() {
 
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -69,7 +70,7 @@ export default function AdditionalDetailsSettingsScreen() {
       setShowSuccess(true);
     } catch (error: any) {
       console.error('Error saving additional details:', error);
-      Alert.alert('Error', error.message || 'Failed to save details.');
+      setErrorMessage('Failed to save details. Please try again later.');
     } finally {
       setIsSaving(false);
     }
@@ -221,6 +222,11 @@ export default function AdditionalDetailsSettingsScreen() {
           navigation.goBack();
         }}
         message="Additional details saved successfully."
+      />
+      <ErrorModal
+        visible={!!errorMessage}
+        message={errorMessage || ''}
+        onClose={() => setErrorMessage(null)}
       />
     </SafeAreaView>
   );

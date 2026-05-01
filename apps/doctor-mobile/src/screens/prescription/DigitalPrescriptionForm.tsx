@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
-  Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
@@ -46,6 +45,9 @@ import NameAutocomplete from '../../components/prescription/NameAutocomplete';
 import PatientSelectModal from '../../components/prescription/PatientSelectModal';
 import MoreOptionsModal from '../../components/prescription/MoreOptionsModal';
 import SaveTemplateModal from '../../components/prescription/SaveTemplateModal';
+import SuccessModal from '../../components/ui/SuccessModal';
+import WarningModal from '../../components/ui/WarningModal';
+import ErrorModal from '../../components/ui/ErrorModal';
 
 // ---------------------------------------------------------------------------
 // DigitalPrescriptionForm — Full native prescription form
@@ -100,6 +102,9 @@ export default function DigitalPrescriptionForm() {
   const [isAISuggesting, setIsAISuggesting] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [offline, setOffline] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [warningMessage, setWarningMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // --- Hooks ---
   const drugSearch = useDrugSearch();
@@ -226,9 +231,9 @@ export default function DigitalPrescriptionForm() {
         setInvestigations(data.investigations.map((i: any) => i.test_name || i.name || ''));
       }
       setShowTemplatePicker(false);
-      Alert.alert('Loaded', `Template "${data.template_name}" loaded.`);
+      setSuccessMessage(`Template "${data.template_name}" loaded.`);
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to load template.');
+      setErrorMessage('Failed to load template. Please try again.');
     }
   };
 
@@ -241,17 +246,17 @@ export default function DigitalPrescriptionForm() {
         medications: medications.filter((m) => m.name),
         investigations: investigations.filter(Boolean).map((n) => ({ name: n })),
       });
-      Alert.alert('Saved', `Template "${name}" saved.`);
+      setSuccessMessage(`Template "${name}" saved.`);
       // Refresh templates
       try { const tpls = await listTemplates(); if (Array.isArray(tpls)) setTemplates(tpls); } catch {}
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to save template.');
+      setErrorMessage('Failed to save template. Please try again.');
     }
   };
 
   const handleAISuggest = async () => {
     if (!diagnosis) {
-      Alert.alert('Required', 'Please enter a diagnosis first.');
+      setWarningMessage('Please enter a diagnosis first.');
       return;
     }
     setIsAISuggesting(true);
@@ -266,7 +271,7 @@ export default function DigitalPrescriptionForm() {
         setInvestigations(data.investigations.map((i: any) => i.test_name || i.name || ''));
       }
     } catch (err: any) {
-      Alert.alert('AI Error', err.message || 'Could not fetch suggestions.');
+      setErrorMessage('Could not fetch AI suggestions. Please try again.');
     } finally {
       setIsAISuggesting(false);
     }
@@ -275,9 +280,9 @@ export default function DigitalPrescriptionForm() {
   // --- Submit ---
   const handleSubmit = async () => {
     const fullName = `${patientFirstName} ${patientSurname}`.trim();
-    if (!fullName) { Alert.alert('Required', 'Patient name is required.'); return; }
-    if (patientPhone.length < 10) { Alert.alert('Required', 'Valid 10-digit phone is required.'); return; }
-    if (!locationId && locations.length > 0) { Alert.alert('Required', 'Select a prescription location.'); return; }
+    if (!fullName) { setWarningMessage('Patient name is required.'); return; }
+    if (patientPhone.length < 10) { setWarningMessage('Valid 10-digit phone is required.'); return; }
+    if (!locationId && locations.length > 0) { setWarningMessage('Select a prescription location.'); return; }
 
     const vitalsObj: any = {};
     if (vitals.bp) vitalsObj.bp = vitals.bp;
@@ -322,12 +327,12 @@ export default function DigitalPrescriptionForm() {
     try {
       await createPrescription(payload);
       playSuccess();
-      Alert.alert('Success', 'Prescription created and sent!', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      setSuccessMessage('Prescription created and sent!');
+      // Navigate back after a short delay to allow the user to see the success message
+      setTimeout(() => navigation.goBack(), 1500);
     } catch (err: any) {
       playError();
-      Alert.alert('Error', err.message || 'Something went wrong. Please try again.');
+      setErrorMessage('Something went wrong. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -756,6 +761,21 @@ export default function DigitalPrescriptionForm() {
         visible={showSaveTemplate}
         onClose={() => setShowSaveTemplate(false)}
         onSave={handleSaveTemplate}
+      />
+      <SuccessModal
+        visible={!!successMessage}
+        message={successMessage || ''}
+        onClose={() => setSuccessMessage(null)}
+      />
+      <WarningModal
+        visible={!!warningMessage}
+        message={warningMessage || ''}
+        onClose={() => setWarningMessage(null)}
+      />
+      <ErrorModal
+        visible={!!errorMessage}
+        message={errorMessage || ''}
+        onClose={() => setErrorMessage(null)}
       />
     </KeyboardAvoidingView>
   );

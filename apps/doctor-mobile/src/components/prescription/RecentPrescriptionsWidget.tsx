@@ -7,7 +7,6 @@ import {
   Modal,
   StyleSheet,
   ActivityIndicator,
-  Alert,
   Linking,
   Platform,
   TextInput,
@@ -25,6 +24,8 @@ import {
   sendPrescriptionEmail,
   getPrescriptionEmailDetails,
 } from '../../services/prescriptionService';
+import SuccessModal from '../ui/SuccessModal';
+import ErrorModal from '../ui/ErrorModal';
 
 // ---------------------------------------------------------------------------
 // RecentPrescriptionsWidget — Floating bottom-sheet with 5 action buttons
@@ -72,6 +73,8 @@ export default function RecentPrescriptionsWidget({
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [emailAddress, setEmailAddress] = useState('');
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // --- Fetch recent prescriptions on mount ---
   useEffect(() => {
@@ -107,7 +110,7 @@ export default function RecentPrescriptionsWidget({
       setShowPdfViewer(true);
     } catch (err: any) {
       playError();
-      Alert.alert('Error', err.message || 'Could not open prescription.');
+      setErrorMessage('Could not open prescription. Please try again.');
     } finally {
       setActiveItemId(null);
     }
@@ -127,14 +130,13 @@ export default function RecentPrescriptionsWidget({
       if (result.status !== 200) throw new Error('Download failed.');
 
       playSuccess();
-      Alert.alert('Downloaded!', `Saved as ${fileName}`, [
-        { text: 'Open / Share', onPress: () => Sharing.shareAsync(result.uri, { mimeType: 'application/pdf' }) },
-        { text: 'OK' },
-      ]);
+      setSuccessMessage(`Downloaded as ${fileName}`);
+      // Also offer to share the file
+      Sharing.shareAsync(result.uri, { mimeType: 'application/pdf' });
       setShowActions(false);
     } catch (err: any) {
       playError();
-      Alert.alert('Download Failed', err.message || 'Could not download prescription.');
+      setErrorMessage('Could not download prescription. Please try again.');
     } finally {
       setIsBusy(false);
     }
@@ -157,7 +159,7 @@ export default function RecentPrescriptionsWidget({
       setShowActions(false);
     } catch (err: any) {
       playError();
-      Alert.alert('Print Failed', err.message || 'Could not print prescription.');
+      setErrorMessage('Could not print prescription. Please try again.');
     } finally {
       setIsBusy(false);
     }
@@ -173,7 +175,7 @@ export default function RecentPrescriptionsWidget({
       setShowEmailModal(true);
     } catch (err: any) {
       playError();
-      Alert.alert('Error', err.message || 'Could not fetch email details.');
+      setErrorMessage('Could not fetch email details. Please try again.');
     } finally {
       setIsBusy(false);
     }
@@ -189,12 +191,12 @@ export default function RecentPrescriptionsWidget({
         patientName: selectedItem.patients?.full_name || 'Patient',
       });
       playSuccess();
-      Alert.alert('Sent!', 'Email has been queued for sending.');
+      setSuccessMessage('Email has been queued for sending.');
       setShowEmailModal(false);
       setShowActions(false);
     } catch (err: any) {
       playError();
-      Alert.alert('Failed', err.message || 'Could not send email.');
+      setErrorMessage('Could not send email. Please try again.');
     } finally {
       setIsSendingEmail(false);
     }
@@ -221,7 +223,7 @@ export default function RecentPrescriptionsWidget({
       setShowActions(false);
     } catch (err: any) {
       playError();
-      Alert.alert('Share Failed', err.message || 'Could not share prescription.');
+      setErrorMessage('Could not share prescription. Please try again.');
     } finally {
       setIsBusy(false);
     }
@@ -472,6 +474,17 @@ export default function RecentPrescriptionsWidget({
           </View>
         </View>
       </Modal>
+
+      <SuccessModal
+        visible={!!successMessage}
+        message={successMessage || ''}
+        onClose={() => setSuccessMessage(null)}
+      />
+      <ErrorModal
+        visible={!!errorMessage}
+        message={errorMessage || ''}
+        onClose={() => setErrorMessage(null)}
+      />
     </>
   );
 }

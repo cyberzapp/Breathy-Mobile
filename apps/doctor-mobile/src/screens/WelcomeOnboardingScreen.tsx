@@ -24,7 +24,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Alert,
   Platform,
   Keyboard,
   Animated,
@@ -34,6 +33,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useColors } from '../hooks/useColors';
 import { useAuthStore } from '../store/authStore';
 import { createDoctorProfile } from '../services/profileService';
+import ErrorModal from '../components/ui/ErrorModal';
 
 export default function WelcomeOnboardingScreen() {
   const c = useColors();
@@ -42,6 +42,7 @@ export default function WelcomeOnboardingScreen() {
   const [prefix, setPrefix] = useState('Dr.');
   const [fullName, setFullName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Keyboard-aware padding (same pattern as KeyboardAwareModal)
   const keyboardHeight = React.useRef(new Animated.Value(0)).current;
@@ -94,7 +95,7 @@ export default function WelcomeOnboardingScreen() {
         // Profile exists, just refresh status to move forward
         await fetchProfileStatus();
       } else {
-        Alert.alert('Error', error.message || 'An error occurred while creating your profile.');
+        setErrorMessage('An error occurred while creating your profile. Please try again.');
       }
     } finally {
       setIsLoading(false);
@@ -196,6 +197,11 @@ export default function WelcomeOnboardingScreen() {
           )}
         </TouchableOpacity>
       </Animated.View>
+      <ErrorModal
+        visible={!!errorMessage}
+        message={errorMessage || ''}
+        onClose={() => setErrorMessage(null)}
+      />
     </SafeAreaView>
   );
 }

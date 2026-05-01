@@ -17,7 +17,6 @@
 // ---------------------------------------------------------------------------
 
 import { useState } from 'react';
-import { Alert } from 'react-native';
 import { useAuthStore } from '../store/authStore';
 import {
   updateProfileStepViaApi,
@@ -30,14 +29,18 @@ import {
 export function useOnboardingSubmit() {
   const fetchProfileStatus = useAuthStore((s) => s.fetchProfileStatus);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitWarning, setSubmitWarning] = useState<string | null>(null);
 
   const submitProfile = async (form: any, isValid: boolean) => {
     if (!isValid) {
-      Alert.alert('Hold on', 'Please fill all mandatory fields.');
+      setSubmitWarning('Please fill all mandatory fields.');
       return false;
     }
 
     setIsSubmitting(true);
+    setSubmitError(null);
+    setSubmitWarning(null);
     try {
       // ---------------------------------------------------------------
       // Step 1: Personal Details
@@ -94,12 +97,12 @@ export function useOnboardingSubmit() {
       return true;
     } catch (e: any) {
       console.error('[Onboarding] Submission Error:', e);
-      Alert.alert('Error', e.message || 'Failed to save profile.');
+      setSubmitError('Failed to save profile. Please try again later.');
       return false;
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  return { submitProfile, isSubmitting };
+  return { submitProfile, isSubmitting, submitError, setSubmitError, submitWarning, setSubmitWarning };
 }

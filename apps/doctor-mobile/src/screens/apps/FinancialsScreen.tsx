@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,6 +19,9 @@ import {
   getPayoutHistory,
 } from '../../services/billingService';
 import { useColors } from '../../hooks/useColors';
+import SuccessModal from '../../components/ui/SuccessModal';
+import WarningModal from '../../components/ui/WarningModal';
+import ErrorModal from '../../components/ui/ErrorModal';
 
 // ---------------------------------------------------------------------------
 // FinancialsScreen — Wallet, Payouts & KYC (Phase 2C)
@@ -53,6 +55,9 @@ export default function FinancialsScreen() {
   // Payout request
   const [payoutAmount, setPayoutAmount] = useState('');
   const [isRequesting, setIsRequesting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [warningMessage, setWarningMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Wallet history
   const [walletHistory, setWalletHistory] = useState<any[]>([]);
@@ -71,7 +76,7 @@ export default function FinancialsScreen() {
     try {
       const data = await getWalletBalance();
       setBalance((data as any)?.balance ?? 0);
-    } catch {} finally { setLoadingBalance(false); }
+    } catch { } finally { setLoadingBalance(false); }
 
     // Payout details
     try {
@@ -84,39 +89,39 @@ export default function FinancialsScreen() {
           pan_number: (data as any).details.masked_pan_number || '',
         }));
       }
-    } catch {} finally { setLoadingDetails(false); }
+    } catch { } finally { setLoadingDetails(false); }
 
     // Wallet history
     try {
       const data = await getWalletHistory();
       setWalletHistory((data as any)?.transactions ?? []);
-    } catch {} finally { setLoadingHistory(false); }
+    } catch { } finally { setLoadingHistory(false); }
 
     // Payout history
     try {
       const data = await getPayoutHistory();
       setPayoutHistory((data as any)?.requests ?? []);
-    } catch {} finally { setLoadingPayoutHistory(false); }
+    } catch { } finally { setLoadingPayoutHistory(false); }
   };
 
   const handleRequestPayout = async () => {
     const amount = parseFloat(payoutAmount);
     if (isNaN(amount) || amount <= 0) {
-      Alert.alert('Invalid', 'Please enter a valid amount.');
+      setWarningMessage('Please enter a valid amount.');
       return;
     }
     if (amount > balance) {
-      Alert.alert('Insufficient', 'Amount exceeds your available balance.');
+      setWarningMessage('Amount exceeds your available balance.');
       return;
     }
     setIsRequesting(true);
     try {
       await requestPayout(amount);
-      Alert.alert('Success', 'Payout request submitted!');
+      setSuccessMessage('Payout request submitted!');
       setPayoutAmount('');
       loadAll();
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to submit payout request.');
+      setErrorMessage('Failed to submit payout request. Please try again.');
     } finally {
       setIsRequesting(false);
     }
@@ -124,26 +129,26 @@ export default function FinancialsScreen() {
 
   const handleSaveDetails = async () => {
     if (!editForm.pan_number) {
-      Alert.alert('Required', 'PAN Number is required.');
+      setWarningMessage('PAN Number is required.');
       return;
     }
     if (editForm.payout_method === 'bank_transfer' &&
-        (!editForm.account_holder_name || !editForm.account_number || !editForm.ifsc_code)) {
-      Alert.alert('Required', 'Account Name, Number, and IFSC are required.');
+      (!editForm.account_holder_name || !editForm.account_number || !editForm.ifsc_code)) {
+      setWarningMessage('Account Name, Number, and IFSC are required.');
       return;
     }
     if (editForm.payout_method === 'upi' && !editForm.upi_vpa) {
-      Alert.alert('Required', 'UPI ID is required.');
+      setWarningMessage('UPI ID is required.');
       return;
     }
     setIsSaving(true);
     try {
       await updatePayoutDetails(editForm);
-      Alert.alert('Success', 'Payout details updated!');
+      setSuccessMessage('Payout details updated!');
       setIsEditing(false);
       loadAll();
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to update details.');
+      setErrorMessage('Failed to update details. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -155,204 +160,221 @@ export default function FinancialsScreen() {
   };
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: c.bg, paddingTop: insets.top }}
-      contentContainerStyle={styles.scrollContent}
-      showsVerticalScrollIndicator={false}
-    >
-      <Text style={[styles.pageTitle, { color: c.text }]}>Your Financials</Text>
+    <>
+      <ScrollView
+        style={{ flex: 1, backgroundColor: c.bg, paddingTop: insets.top }}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <Text style={[styles.pageTitle, { color: c.text }]}>Your Financials</Text>
 
-      {/* Balance + Payout Request */}
-      <View style={styles.topRow}>
-        <View style={[styles.balanceCard, { backgroundColor: c.card }]}>
-          <Text style={styles.cardLabel}>Available Balance</Text>
-          {isLoadingBalance ? (
-            <ActivityIndicator color={BRAND} />
-          ) : (
-            <Text style={styles.balanceAmount}>
-              ₹{balance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-            </Text>
-          )}
-        </View>
-        <View style={[styles.payoutRequestCard, { backgroundColor: c.card }]}>
-          <Text style={styles.cardLabel}>Request Payout</Text>
-          {isLoadingDetails ? (
-            <Text style={styles.loadingSmall}>Loading...</Text>
-          ) : !payoutDetails ? (
-            <Text style={styles.warningSmall}>Set up payout details first.</Text>
-          ) : payoutDetails.kyc_status !== 'verified' ? (
-            <Text style={styles.warningSmall}>
-              KYC: {payoutDetails.kyc_status}. Payouts disabled.
-            </Text>
-          ) : (
-            <View style={styles.payoutForm}>
-              <View style={styles.amountInputRow}>
-                <Text style={styles.rupeePrefix}>₹</Text>
-                <TextInput
-                  style={styles.amountInput}
-                  placeholder="0.00"
-                  placeholderTextColor="#94a3b8"
-                  value={payoutAmount}
-                  onChangeText={setPayoutAmount}
-                  keyboardType="numeric"
-                />
-              </View>
-              <TouchableOpacity
-                style={[styles.requestBtn, isRequesting && { opacity: 0.6 }]}
-                onPress={handleRequestPayout}
-                disabled={isRequesting}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.requestBtnText}>
-                  {isRequesting ? 'Submitting...' : 'Request'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-      </View>
-
-      {/* Payout Details */}
-      <View style={[styles.sectionCard, { backgroundColor: c.card }]}>
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: c.text }]}>Payout Details & KYC</Text>
-          {!isEditing && payoutDetails && (
-            <TouchableOpacity onPress={() => setIsEditing(true)}>
-              <Text style={styles.editBtn}>Edit</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-        {isLoadingDetails ? (
-          <ActivityIndicator color={BRAND} />
-        ) : !isEditing && payoutDetails ? (
-          <View style={styles.detailsList}>
-            <DetailItem label="Method" value={payoutDetails.payout_method === 'upi' ? 'UPI' : 'Bank Transfer'} />
-            {payoutDetails.payout_method === 'bank_transfer' && (
-              <>
-                <DetailItem label="Account Holder" value={payoutDetails.account_holder_name} />
-                <DetailItem label="Account No." value={payoutDetails.masked_account_number} />
-                <DetailItem label="IFSC" value={payoutDetails.ifsc_code} />
-              </>
-            )}
-            {payoutDetails.payout_method === 'upi' && (
-              <DetailItem label="UPI ID" value={payoutDetails.masked_upi_vpa} />
-            )}
-            <DetailItem label="PAN" value={payoutDetails.masked_pan_number} />
-            <DetailItem
-              label="KYC Status"
-              value={payoutDetails.kyc_status}
-              valueColor={payoutDetails.kyc_status === 'verified' ? '#16a34a' : '#d97706'}
-            />
-          </View>
-        ) : (
-          /* Edit Form */
-          <View style={styles.editFormContainer}>
-            <FormField label="PAN Number *" value={editForm.pan_number}
-              onChangeText={(v: string) => setEditForm({ ...editForm, pan_number: v })}
-              placeholder="ABCDE1234F" />
-
-            <Text style={styles.formLabel}>Payout Method</Text>
-            <View style={styles.methodRow}>
-              {(['bank_transfer', 'upi'] as const).map((m) => (
-                <TouchableOpacity key={m}
-                  style={[styles.methodBtn, editForm.payout_method === m && styles.methodBtnActive]}
-                  onPress={() => setEditForm({ ...editForm, payout_method: m })}
-                >
-                  <Text style={[styles.methodBtnText, editForm.payout_method === m && styles.methodBtnTextActive]}>
-                    {m === 'bank_transfer' ? 'Bank Transfer' : 'UPI'}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {editForm.payout_method === 'bank_transfer' && (
-              <>
-                <FormField label="Account Holder *" value={editForm.account_holder_name}
-                  onChangeText={(v: string) => setEditForm({ ...editForm, account_holder_name: v })} />
-                <FormField label="Account Number *" value={editForm.account_number}
-                  onChangeText={(v: string) => setEditForm({ ...editForm, account_number: v })} keyboardType="numeric" />
-                <FormField label="IFSC Code *" value={editForm.ifsc_code}
-                  onChangeText={(v: string) => setEditForm({ ...editForm, ifsc_code: v })} />
-              </>
-            )}
-            {editForm.payout_method === 'upi' && (
-              <FormField label="UPI ID (VPA) *" value={editForm.upi_vpa}
-                onChangeText={(v: string) => setEditForm({ ...editForm, upi_vpa: v })} placeholder="yourname@bank" />
-            )}
-
-            <View style={styles.formActions}>
-              {isEditing && (
-                <TouchableOpacity style={styles.cancelBtn} onPress={() => setIsEditing(false)}>
-                  <Text style={styles.cancelBtnText}>Cancel</Text>
-                </TouchableOpacity>
-              )}
-              <TouchableOpacity
-                style={[styles.saveBtn, isSaving && { opacity: 0.6 }]}
-                onPress={handleSaveDetails}
-                disabled={isSaving}
-              >
-                <Text style={styles.saveBtnText}>{isSaving ? 'Saving...' : 'Save Details'}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-      </View>
-
-      {/* Wallet History */}
-      <View style={[styles.sectionCard, { backgroundColor: c.card }]}>
-        <Text style={[styles.sectionTitle, { color: c.text }]}>Wallet History</Text>
-        {isLoadingHistory ? (
-          <ActivityIndicator color={BRAND} style={{ marginTop: 16 }} />
-        ) : walletHistory.length === 0 ? (
-          <Text style={styles.emptyText}>No transactions yet.</Text>
-        ) : (
-          walletHistory.slice(0, 20).map((tx: any) => (
-            <View key={tx.id} style={styles.txRow}>
-              <View style={styles.txInfo}>
-                <Text style={styles.txType}>
-                  {tx.type?.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
-                </Text>
-                <Text style={styles.txDate}>{formatDate(tx.created_at)}</Text>
-              </View>
-              <Text style={[styles.txAmount, tx.amount >= 0 ? styles.green : styles.red]}>
-                {tx.amount >= 0 ? '+' : ''}₹{Math.abs(tx.amount).toLocaleString('en-IN')}
+        {/* Balance + Payout Request */}
+        <View style={styles.topRow}>
+          <View style={[styles.balanceCard, { backgroundColor: c.card }]}>
+            <Text style={styles.cardLabel}>Available Balance</Text>
+            {isLoadingBalance ? (
+              <ActivityIndicator color={BRAND} />
+            ) : (
+              <Text style={styles.balanceAmount}>
+                ₹{balance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
               </Text>
-            </View>
-          ))
-        )}
-      </View>
-
-      {/* Payout History */}
-      <View style={[styles.sectionCard, { backgroundColor: c.card }]}>
-        <Text style={[styles.sectionTitle, { color: c.text }]}>Payout History</Text>
-        {isLoadingPayoutHistory ? (
-          <ActivityIndicator color={BRAND} style={{ marginTop: 16 }} />
-        ) : payoutHistory.length === 0 ? (
-          <Text style={styles.emptyText}>No payout requests yet.</Text>
-        ) : (
-          payoutHistory.slice(0, 20).map((req: any, idx: number) => {
-            const statusColor =
-              req.status === 'completed' ? '#16a34a' :
-              req.status === 'failed' || req.status === 'rejected' ? '#dc2626' :
-              req.status === 'processing' ? '#2563eb' : '#d97706';
-            return (
-              <View key={req.id || idx} style={styles.txRow}>
-                <View style={styles.txInfo}>
-                  <Text style={styles.txType}>₹{req.amount?.toLocaleString('en-IN')}</Text>
-                  <Text style={styles.txDate}>{formatDate(req.requested_at)}</Text>
+            )}
+          </View>
+          <View style={[styles.payoutRequestCard, { backgroundColor: c.card }]}>
+            <Text style={styles.cardLabel}>Request Payout</Text>
+            {isLoadingDetails ? (
+              <Text style={styles.loadingSmall}>Loading...</Text>
+            ) : !payoutDetails ? (
+              <Text style={styles.warningSmall}>Set up payout details first.</Text>
+            ) : payoutDetails.kyc_status !== 'verified' ? (
+              <Text style={styles.warningSmall}>
+                KYC: {payoutDetails.kyc_status}. Payouts disabled.
+              </Text>
+            ) : (
+              <View style={styles.payoutForm}>
+                <View style={styles.amountInputRow}>
+                  <Text style={styles.rupeePrefix}>₹</Text>
+                  <TextInput
+                    style={styles.amountInput}
+                    placeholder="0.00"
+                    placeholderTextColor="#94a3b8"
+                    value={payoutAmount}
+                    onChangeText={setPayoutAmount}
+                    keyboardType="numeric"
+                  />
                 </View>
-                <View style={[styles.payoutStatusBadge, { backgroundColor: `${statusColor}18` }]}>
-                  <Text style={[styles.payoutStatusText, { color: statusColor }]}>
-                    {req.status?.charAt(0).toUpperCase() + req.status?.slice(1)}
+                <TouchableOpacity
+                  style={[styles.requestBtn, isRequesting && { opacity: 0.6 }]}
+                  onPress={handleRequestPayout}
+                  disabled={isRequesting}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.requestBtnText}>
+                    {isRequesting ? 'Submitting...' : 'Request'}
                   </Text>
-                </View>
+                </TouchableOpacity>
               </View>
-            );
-          })
-        )}
-      </View>
-    </ScrollView>
-  );
+            )}
+          </View>
+        </View>
+
+        {/* Payout Details */}
+        <View style={[styles.sectionCard, { backgroundColor: c.card }]}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: c.text }]}>Payout Details & KYC</Text>
+            {!isEditing && payoutDetails && (
+              <TouchableOpacity onPress={() => setIsEditing(true)}>
+                <Text style={styles.editBtn}>Edit</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          {isLoadingDetails ? (
+            <ActivityIndicator color={BRAND} />
+          ) : !isEditing && payoutDetails ? (
+            <View style={styles.detailsList}>
+              <DetailItem label="Method" value={payoutDetails.payout_method === 'upi' ? 'UPI' : 'Bank Transfer'} />
+              {payoutDetails.payout_method === 'bank_transfer' && (
+                <>
+                  <DetailItem label="Account Holder" value={payoutDetails.account_holder_name} />
+                  <DetailItem label="Account No." value={payoutDetails.masked_account_number} />
+                  <DetailItem label="IFSC" value={payoutDetails.ifsc_code} />
+                </>
+              )}
+              {payoutDetails.payout_method === 'upi' && (
+                <DetailItem label="UPI ID" value={payoutDetails.masked_upi_vpa} />
+              )}
+              <DetailItem label="PAN" value={payoutDetails.masked_pan_number} />
+              <DetailItem
+                label="KYC Status"
+                value={payoutDetails.kyc_status}
+                valueColor={payoutDetails.kyc_status === 'verified' ? '#16a34a' : '#d97706'}
+              />
+            </View>
+          ) : (
+            /* Edit Form */
+            <View style={styles.editFormContainer}>
+              <FormField label="PAN Number *" value={editForm.pan_number}
+                onChangeText={(v: string) => setEditForm({ ...editForm, pan_number: v })}
+                placeholder="ABCDE1234F" />
+
+              <Text style={styles.formLabel}>Payout Method</Text>
+              <View style={styles.methodRow}>
+                {(['bank_transfer', 'upi'] as const).map((m) => (
+                  <TouchableOpacity key={m}
+                    style={[styles.methodBtn, editForm.payout_method === m && styles.methodBtnActive]}
+                    onPress={() => setEditForm({ ...editForm, payout_method: m })}
+                  >
+                    <Text style={[styles.methodBtnText, editForm.payout_method === m && styles.methodBtnTextActive]}>
+                      {m === 'bank_transfer' ? 'Bank Transfer' : 'UPI'}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {editForm.payout_method === 'bank_transfer' && (
+                <>
+                  <FormField label="Account Holder *" value={editForm.account_holder_name}
+                    onChangeText={(v: string) => setEditForm({ ...editForm, account_holder_name: v })} />
+                  <FormField label="Account Number *" value={editForm.account_number}
+                    onChangeText={(v: string) => setEditForm({ ...editForm, account_number: v })} keyboardType="numeric" />
+                  <FormField label="IFSC Code *" value={editForm.ifsc_code}
+                    onChangeText={(v: string) => setEditForm({ ...editForm, ifsc_code: v })} />
+                </>
+              )}
+              {editForm.payout_method === 'upi' && (
+                <FormField label="UPI ID (VPA) *" value={editForm.upi_vpa}
+                  onChangeText={(v: string) => setEditForm({ ...editForm, upi_vpa: v })} placeholder="yourname@bank" />
+              )}
+
+              <View style={styles.formActions}>
+                {isEditing && (
+                  <TouchableOpacity style={styles.cancelBtn} onPress={() => setIsEditing(false)}>
+                    <Text style={styles.cancelBtnText}>Cancel</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  style={[styles.saveBtn, isSaving && { opacity: 0.6 }]}
+                  onPress={handleSaveDetails}
+                  disabled={isSaving}
+                >
+                  <Text style={styles.saveBtnText}>{isSaving ? 'Saving...' : 'Save Details'}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+        </View>
+
+        {/* Wallet History */}
+        <View style={[styles.sectionCard, { backgroundColor: c.card }]}>
+          <Text style={[styles.sectionTitle, { color: c.text }]}>Wallet History</Text>
+          {isLoadingHistory ? (
+            <ActivityIndicator color={BRAND} style={{ marginTop: 16 }} />
+          ) : walletHistory.length === 0 ? (
+            <Text style={styles.emptyText}>No transactions yet.</Text>
+          ) : (
+            walletHistory.slice(0, 20).map((tx: any) => (
+              <View key={tx.id} style={styles.txRow}>
+                <View style={styles.txInfo}>
+                  <Text style={styles.txType}>
+                    {tx.type?.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+                  </Text>
+                  <Text style={styles.txDate}>{formatDate(tx.created_at)}</Text>
+                </View>
+                <Text style={[styles.txAmount, tx.amount >= 0 ? styles.green : styles.red]}>
+                  {tx.amount >= 0 ? '+' : ''}₹{Math.abs(tx.amount).toLocaleString('en-IN')}
+                </Text>
+              </View>
+            ))
+          )}
+        </View>
+
+        {/* Payout History */}
+        <View style={[styles.sectionCard, { backgroundColor: c.card }]}>
+          <Text style={[styles.sectionTitle, { color: c.text }]}>Payout History</Text>
+          {isLoadingPayoutHistory ? (
+            <ActivityIndicator color={BRAND} style={{ marginTop: 16 }} />
+          ) : payoutHistory.length === 0 ? (
+            <Text style={styles.emptyText}>No payout requests yet.</Text>
+          ) : (
+            payoutHistory.slice(0, 20).map((req: any, idx: number) => {
+              const statusColor =
+                req.status === 'completed' ? '#16a34a' :
+                  req.status === 'failed' || req.status === 'rejected' ? '#dc2626' :
+                    req.status === 'processing' ? '#2563eb' : '#d97706';
+              return (
+                <View key={req.id || idx} style={styles.txRow}>
+                  <View style={styles.txInfo}>
+                    <Text style={styles.txType}>₹{req.amount?.toLocaleString('en-IN')}</Text>
+                    <Text style={styles.txDate}>{formatDate(req.requested_at)}</Text>
+                  </View>
+                  <View style={[styles.payoutStatusBadge, { backgroundColor: `${statusColor}18` }]}>
+                    <Text style={[styles.payoutStatusText, { color: statusColor }]}>
+                      {req.status?.charAt(0).toUpperCase() + req.status?.slice(1)}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })
+          )}
+        </View>
+      </ScrollView>
+      <SuccessModal
+        visible={!!successMessage}
+        message={successMessage || ''}
+        onClose={() => setSuccessMessage(null)}
+      />
+      <WarningModal
+        visible={!!warningMessage}
+        message={warningMessage || ''}
+        onClose={() => setWarningMessage(null)}
+      />
+      <ErrorModal
+        visible={!!errorMessage}
+        message={errorMessage || ''}
+        onClose={() => setErrorMessage(null)}
+      />
+    </>
+  )
 }
 
 function DetailItem({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {

@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { updatePersonalDetails } from '../../services/profileService';
@@ -13,6 +12,7 @@ import { useAuthStore } from '../../store/authStore';
 
 // INDUSTRY STANDARD: Import the deterministic wrapper
 import KeyboardAwareModal from '../ui/KeyboardAwareModal';
+import ErrorModal from '../ui/ErrorModal';
 
 const BRAND = '#22ae9e';
 
@@ -27,6 +27,7 @@ export default function PersonalDetailsEditModal({ visible, onClose, onSuccess, 
   const fetchProfile = useAuthStore((s) => s.fetchProfileStatus);
   const [about, setAbout] = useState(profile?.about || '');
   const [isSaving, setIsSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -40,17 +41,17 @@ export default function PersonalDetailsEditModal({ visible, onClose, onSuccess, 
       if (onSuccess) {
         onSuccess('Details updated successfully!');
       } else {
-        Alert.alert('Success', 'Details updated successfully!');
         onClose();
       }
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to update details.');
+      setErrorMessage('Failed to update details. Please try again later.');
     } finally {
       setIsSaving(false);
     }
   };
 
   return (
+    <>
     <KeyboardAwareModal visible={visible} onClose={onClose} title="Edit Personal Details">
       {/* About Me / Bio */}
       <Text style={styles.label}>About Me / Bio</Text>
@@ -84,6 +85,12 @@ export default function PersonalDetailsEditModal({ visible, onClose, onSuccess, 
         </TouchableOpacity>
       </View>
     </KeyboardAwareModal>
+    <ErrorModal
+      visible={!!errorMessage}
+      message={errorMessage || ''}
+      onClose={() => setErrorMessage(null)}
+    />
+  </>
   );
 }
 
