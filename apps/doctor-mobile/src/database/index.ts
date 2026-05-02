@@ -5,6 +5,7 @@ import uuid from 'react-native-uuid';
 import { mySchema } from './schema';
 import Patient from './models/Patient';
 import Appointment from './models/Appointment';
+import { Logger } from '../utils/logger';
 setGenerator(() => uuid.v4() as string);
 // 1. Create the SQLite Adapter
 const adapter = new SQLiteAdapter({
@@ -13,7 +14,7 @@ const adapter = new SQLiteAdapter({
   jsi: true, // Enables maximum performance mode
   onSetUpError: error => {
     // Database failed to load
-    console.error("WatermelonDB failed to initialize:", error);
+    Logger.error("WatermelonDB failed to initialize:", error, { source: 'database/index' });
   }
 });
 

@@ -20,6 +20,7 @@ import OnboardingScreen from '../screens/OnboardingScreen';
 import { useAppStore } from '../store/appStore';
 import { useThemeStore } from '../store/themeStore';
 import { registerForPushNotificationsAsync } from '../hooks/usePushNotifications';
+import { Logger } from '../utils/logger';
 // ---------------------------------------------------------------------------
 // RootNavigator — The Core Routing Engine
 // ---------------------------------------------------------------------------
@@ -92,7 +93,7 @@ export default function RootNavigator() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log(`🔐 [Auth] State changed: ${_event}`);
+      Logger.info(`🔐 [Auth] State changed: ${_event}`);
       setSession(session);
 
       if (session) {
@@ -127,8 +128,8 @@ export default function RootNavigator() {
       const params = data?.params; // Safely extract params
       
       if (userText && params?.sessionId) {
-        console.log('[Push] Silently sending quick reply to session:', params.sessionId);
-        postMessage(params.sessionId, userText).catch(console.error);
+        Logger.info('[Push] Silently sending quick reply', { sessionId: params.sessionId });
+        postMessage(params.sessionId, userText).catch((e) => Logger.error('Quick reply failed', e));
       }
       return; 
     }
@@ -136,7 +137,7 @@ export default function RootNavigator() {
     // SCENARIO 2: The user tapped the notification normally (Deep Link)
     if (actionId === Notifications.DEFAULT_ACTION_IDENTIFIER && data?.route) {
       if (navigationRef.isReady()) {
-        console.log('[Push] Deep linking to:', data.route, data.params);
+        Logger.info('[Push] Deep linking', { route: data.route, params: data.params });
         navigationRef.navigate(data.route as any, data.params as any);
       }
     }

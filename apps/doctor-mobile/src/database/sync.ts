@@ -3,6 +3,7 @@ import { database } from './index';
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { useSyncStore } from '../store/syncStore';
+import { Logger } from '../utils/logger';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL!;
 
@@ -66,7 +67,7 @@ export async function syncDatabase() {
     syncStore.setSyncSuccess(Date.now()); // Update UI state to Success
 
   } catch (error: any) {
-    console.error('Sync failed');
+    Logger.error('Sync failed', error, { source: 'database/sync' });
     
     
     // Update UI state to show an offline/error warning badge

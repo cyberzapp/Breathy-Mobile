@@ -18,6 +18,7 @@ import {
 
 import { supabase } from '../../lib/supabaseClient';
 import { decode } from 'base64-arraybuffer';
+import { Logger } from '../../utils/logger';
 import { useColors } from '../../hooks/useColors';
 import KeyboardAwareModal from '../../components/ui/KeyboardAwareModal';
 import SuccessModal from '../../components/ui/SuccessModal';
@@ -109,7 +110,7 @@ export default function PrescriptionSettingsScreen() {
         setShowGenerics(doc?.show_generic_names !== false);
       }
     } catch (e) {
-      console.error('[PrescriptionSettings] fetch error:', e);
+      Logger.error('Prescription settings fetch failed', e, { source: 'PrescriptionSettings' });
     } finally {
       setLoading(false);
     }
@@ -166,7 +167,7 @@ export default function PrescriptionSettingsScreen() {
       await updateDoctorProfile({ show_generic_names: val });
     } catch (e) {
       setShowGenerics(!val);
-      console.error(e);
+      Logger.error('Prescription settings save failed', e, { source: 'PrescriptionSettings' });
     }
   };
 
@@ -253,7 +254,7 @@ export default function PrescriptionSettingsScreen() {
       setShowSignaturePad(false);
       setSuccessMessage('Signature saved!');
     } catch (e: any) {
-      console.error(e);
+      Logger.error('Prescription style save failed', e, { source: 'PrescriptionSettings' });
       setErrorMessage('Failed to save signature. Please try again later.');
     } finally {
       setIsUploading(false);

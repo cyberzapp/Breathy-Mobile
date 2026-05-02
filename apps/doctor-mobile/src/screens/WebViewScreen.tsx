@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabaseClient';
 import { useAuthStore } from '../store/authStore';
 import { useColors } from '../hooks/useColors';
+import { Logger } from '../utils/logger';
 
 // ---------------------------------------------------------------------------
 // WebViewScreen
@@ -92,7 +93,7 @@ export default function WebViewScreen() {
           meta.setAttribute('name', 'viewport');
           document.getElementsByTagName('head')[0].appendChild(meta);
         } catch(e) {
-          console.error('[Native Bridge] Session injection failed:', e);
+          
         }
       })();
       true;

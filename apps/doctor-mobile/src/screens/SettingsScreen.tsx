@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../store/authStore';
 import { useThemeStore } from '../store/themeStore';
 import { useColors } from '../hooks/useColors';
+import { Logger } from '../utils/logger';
 
 import KeyboardAwareModal from '../components/ui/KeyboardAwareModal';
 
@@ -46,7 +47,7 @@ export default function SettingsScreen() {
         message: 'Manage your clinical practice seamlessly with Breathy! Download the app here:\n\nhttps://play.google.com/store/apps/details?id=com.breathy.doctor',
       });
     } catch (error) {
-      console.error(error);
+      Logger.error('Settings action failed', error, { source: 'SettingsScreen' });
     }
   };
 

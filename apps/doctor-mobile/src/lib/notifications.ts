@@ -2,6 +2,7 @@ import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
+import { Logger } from '../utils/logger';
 
 // Handle notification behavior when app is in foreground
 Notifications.setNotificationHandler({
@@ -45,7 +46,7 @@ export async function registerForPushNotificationsAsync() {
       token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
       console.log('Expo Push Token:', token);
     } catch (e) {
-      console.error('Error fetching Expo push token', e);
+      Logger.error('Expo push token fetch failed', e, { source: 'notifications' });
     }
   } else {
     console.log('Must use physical device for Push Notifications');

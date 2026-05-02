@@ -14,6 +14,7 @@ import { updateAppointmentStatus } from '../services/calendarService';
 import VideoAppointmentModal from './VideoAppointmentModal';
 import ErrorModal from './ui/ErrorModal';
 import ConfirmationModal from './ui/ConfirmationModal';
+import { Logger } from '../utils/logger';
 
 const BRAND = '#22ae9e';
 
@@ -39,7 +40,7 @@ export default function VideoCallsModal({ visible, onClose }: Props) {
       const data = await getTodaysVideoAppointments();
       setVideoCalls(data || []);
     } catch (error: any) {
-      console.error('[VideoCalls] Fetch error:', error);
+      Logger.error('Video calls fetch failed', error, { source: 'VideoCallsModal' });
       setErrorMessage('Unable to load video calls right now. Please try again.');
     } finally {
       setIsLoading(false);

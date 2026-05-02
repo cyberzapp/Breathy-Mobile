@@ -92,7 +92,6 @@ export default function SectionWebViewScreen() {
           nativeStyle.textContent = '.MuiDrawer-root, .MuiDrawer-docked, [class*=Sidebar], [class*=sidebar], nav, header, [class*=Header], [class*=header], [class*=TopBar], [class*=topbar], [class*=MobileNav], .MuiAppBar-root, .MuiBottomNavigation-root { display: none !important; width: 0 !important; min-width: 0 !important; overflow: hidden !important; } main, [class*=content], [class*=main], [class*=layout_content] { margin-left: 0 !important; padding-left: 0 !important; width: 100% !important; max-width: 100% !important; flex: 1 !important; }';
           document.head.appendChild(nativeStyle);
         } catch(e) {
-          console.error('[Native Bridge] Session injection failed:', e);
         }
       })();
       true;

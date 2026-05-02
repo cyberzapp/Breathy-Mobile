@@ -6,6 +6,7 @@ import { useAppStore } from '../store/appStore';
 import { supabase } from '../lib/supabaseClient';
 import { decode } from 'base64-arraybuffer';
 import short from 'short-uuid';
+import { Logger } from '../utils/logger';
 
 // INDUSTRY STANDARD: Import the pure native Skia component
 import { SkiaSignaturePad, SignaturePadRef } from '../components/ui/SkiaSignaturePad';
@@ -105,7 +106,7 @@ export default function OnboardingScreen() {
       // 4. Finish onboarding
       setHasSeenNativeOnboarding(true);
     } catch (e) {
-      console.error(e);
+      Logger.error('Onboarding profile fetch failed', e, { source: 'OnboardingScreen' });
       setErrorMessage('Failed to save signature. You can try again later in Settings.');
       setHasSeenNativeOnboarding(true); // let them through anyway
     } finally {

@@ -22,6 +22,8 @@ import { useColors } from '../hooks/useColors';
 import { Screen } from '../components/Screen';
 import SuccessModal from '../components/ui/SuccessModal';
 import ErrorModal from '../components/ui/ErrorModal';
+import { posthog } from '../config/posthog';
+import { Logger } from '../utils/logger';
 // ---------------------------------------------------------------------------
 // CalendarScreen — Full native calendar with month grid + day agenda
 // ---------------------------------------------------------------------------
@@ -78,7 +80,7 @@ export default function CalendarScreen() {
       }
       setEvents(data || []);
     } catch (err: any) {
-      console.error('[Calendar] Fetch failed:', err?.message);
+      Logger.error('Calendar fetch failed', err, { source: 'CalendarScreen' });
     } finally {
       setIsLoading(false);
     }
@@ -147,6 +149,10 @@ export default function CalendarScreen() {
     setActionLoading(true);
     try {
       await updateAppointmentStatus(eventId, newStatus);
+      posthog.capture('appointment_status_changed', {
+        appointment_id: eventId,
+        new_status: newStatus,
+      });
       setSuccessMessage(`Appointment marked as ${newStatus}`);
       setInspectorEvent(null);
       await fetchEvents();
@@ -326,7 +332,11 @@ export default function CalendarScreen() {
         <OfflineBookingModal
           visible={showOfflineBooking}
           onClose={() => setShowOfflineBooking(false)}
-          onSuccess={(msg: string) => { setShowOfflineBooking(false); setSuccessMessage(msg); }}
+          onSuccess={(msg: string) => {
+            posthog.capture('offline_booking_created');
+            setShowOfflineBooking(false);
+            setSuccessMessage(msg);
+          }}
           initialDate={selectedDate}
           onBooked={fetchEvents}
         />

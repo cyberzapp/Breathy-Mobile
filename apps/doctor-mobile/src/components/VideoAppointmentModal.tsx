@@ -10,6 +10,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import apiClient from '../lib/apiClient';
+import { Logger } from '../utils/logger';
 
 const BRAND = '#22ae9e';
 
@@ -23,7 +24,7 @@ export default function VideoAppointmentModal({ visible, event, onClose }: Props
   const [isJoinable, setJoinable] = useState(false);
   const [countdown, setCountdown] = useState('');
   const [loading, setLoading] = useState(false);
-  
+
   const navigation = useNavigation<any>();
 
   useEffect(() => {
@@ -57,14 +58,14 @@ export default function VideoAppointmentModal({ visible, event, onClose }: Props
     try {
       // Mirror the web's signalCallStart
       await apiClient.post('/api/video/start-call', { appointmentId: event.id });
-      
+
       // Close modal and navigate to WebView
       onClose();
       navigation.navigate('VideoModule', {
         appointmentId: event.id,
       });
     } catch (err) {
-      console.error('Failed to start call', err);
+      Logger.error('Video call start failed', err, { source: 'VideoAppointmentModal' });
       // Fallback navigate anyway in case the backend already flagged it as started
       onClose();
       navigation.navigate('VideoModule', {
@@ -83,7 +84,7 @@ export default function VideoAppointmentModal({ visible, event, onClose }: Props
         <View style={styles.box}>
           <View style={styles.header}>
             <View style={styles.headerTitleRow}>
-              <Ionicons name="videocam" size={24} color="#3b82f6" />
+              <Ionicons name="videocam" size={24} color="#22ae9e" />
               <Text style={styles.headerTitle}>Video Consultation</Text>
             </View>
             <TouchableOpacity onPress={onClose}>
@@ -93,7 +94,7 @@ export default function VideoAppointmentModal({ visible, event, onClose }: Props
 
           <View style={styles.content}>
             <Text style={styles.patientName}>{event.extendedProps?.patientName}</Text>
-            
+
             <View style={styles.timeRow}>
               <Ionicons name="time-outline" size={16} color="#64748b" />
               <Text style={styles.timeText}>
@@ -125,7 +126,7 @@ export default function VideoAppointmentModal({ visible, event, onClose }: Props
             <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
               <Text style={styles.closeBtnText}>Close</Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity
               style={[
                 styles.primaryBtn,

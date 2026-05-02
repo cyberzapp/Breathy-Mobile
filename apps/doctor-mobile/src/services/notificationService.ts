@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabaseClient';
+import { Logger } from '../utils/logger';
 
 export async function registerDeviceToken(userId: string, token: string) {
   try {
@@ -26,7 +27,7 @@ export async function registerDeviceToken(userId: string, token: string) {
 
     if (error) throw error;
   } catch (error) {
-    console.error('Error registering device token:', error);
+    Logger.error('Device token registration failed', error, { source: 'notificationService' });
   }
 }
 
@@ -39,6 +40,6 @@ export async function unregisterDeviceToken(token: string) {
 
     if (error) throw error;
   } catch (error) {
-    console.error('Error unregistering device token:', error);
+    Logger.error('Device token unregistration failed', error, { source: 'notificationService' });
   }
 }

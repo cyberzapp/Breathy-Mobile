@@ -4,8 +4,11 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as SplashScreen from 'expo-splash-screen';
 import { createContext, useContext } from 'react';
+import { PostHogProvider } from 'posthog-react-native';
 import { database } from './src/database';
 import RootNavigator from './src/navigation/RootNavigator';
+import { posthog } from './src/config/posthog';
+import { Logger } from './src/utils/logger';
 
 // ---------------------------------------------------------------------------
 // App.tsx — Application Root
@@ -45,7 +48,7 @@ export default function App() {
         const count = await database.get('patients').query().fetchCount();
         
       } catch (e) {
-        console.error(`❌ App Boot Sequence failed:`, e);
+        Logger.error('App Boot Sequence failed', e, { source: 'App.tsx' });
       }
     };
     bootSequence();
@@ -58,9 +61,18 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <DatabaseContext.Provider value={database}>
-          <RootNavigator />
-        </DatabaseContext.Provider>
+        <PostHogProvider
+          client={posthog}
+          autocapture={{
+            captureScreens: true,
+            captureTouches: true,
+            propsToCapture: ['testID'],
+          }}
+        >
+          <DatabaseContext.Provider value={database}>
+            <RootNavigator />
+          </DatabaseContext.Provider>
+        </PostHogProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

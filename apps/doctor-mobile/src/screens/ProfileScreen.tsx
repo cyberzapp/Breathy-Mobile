@@ -26,6 +26,7 @@ import WarningModal from '../components/ui/WarningModal';
 import { useColors } from '../hooks/useColors';
 import { isOnline } from '../services/offlineCacheService';
 import { Screen } from '../components/Screen';
+import { Logger } from '../utils/logger';
 // ---------------------------------------------------------------------------
 // Interfaces for strict TypeScript safety
 // ---------------------------------------------------------------------------
@@ -69,7 +70,7 @@ const uuidToShortId = (uuid: string): string => {
     }
     return shortId;
   } catch (e) {
-    console.error('Failed to compress UUID:', e);
+    Logger.error('UUID compression failed', e, { source: 'ProfileScreen' });
     return uuid; // Fallback
   }
 };
@@ -161,7 +162,7 @@ export default function ProfileScreen() {
         title: `${profile.prefix || 'Dr.'} ${profile.full_name}`,
       });
     } catch (err) {
-      console.error('[Profile] Share failed:', err);
+      Logger.error('Profile share failed', err, { source: 'ProfileScreen' });
       setErrorMessage('Could not open share menu.');
     }
   };

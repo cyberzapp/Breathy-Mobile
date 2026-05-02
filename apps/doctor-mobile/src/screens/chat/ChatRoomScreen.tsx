@@ -18,6 +18,7 @@ import { useColors } from '../../hooks/useColors';
 import { useAuthStore } from '../../store/authStore';
 import { getMessagesForSession, postMessage } from '../../services/chatService';
 import { supabase } from '../../lib/supabaseClient';
+import { Logger } from '../../utils/logger';
 
 export default function ChatRoomScreen() {
   const navigation = useNavigation<any>();
@@ -93,7 +94,7 @@ export default function ChatRoomScreen() {
       const data = await getMessagesForSession(sessionId);
       setMessages(data || []);
     } catch (error) {
-      console.error('[ChatRoom] Error fetching history:', error);
+      Logger.error('Chat history fetch failed', error, { source: 'ChatRoomScreen' });
     } finally {
       setLoading(false);
     }
@@ -108,7 +109,7 @@ export default function ChatRoomScreen() {
     try {
       await postMessage(sessionId, textToSend);
     } catch (error) {
-      console.error('[ChatRoom] Failed to send message:', error);
+      Logger.error('Message send failed', error, { source: 'ChatRoomScreen' });
     }
   };
 

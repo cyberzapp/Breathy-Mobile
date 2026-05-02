@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabaseClient';
 import apiClient from '../lib/apiClient';
+import { Logger } from '../utils/logger';
 
 // ---------------------------------------------------------------------------
 // NotificationsPanel — Floating dropdown from bell icon
@@ -69,7 +70,7 @@ export default function NotificationsPanel({ visible, onClose }: NotificationsPa
       );
       setNotifications(sortedData);
     } catch (error) {
-      console.error('[Notifications] Fetch failed:', error);
+      Logger.error('Notifications fetch failed', error, { source: 'NotificationsPanel' });
     } finally {
       setIsLoading(false);
     }
@@ -108,7 +109,7 @@ export default function NotificationsPanel({ visible, onClose }: NotificationsPa
         prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
       );
     } catch (error) {
-      console.error('[Notifications] Mark as read failed:', error);
+      Logger.error('Mark as read failed', error, { source: 'NotificationsPanel' });
     }
   };
 
@@ -117,7 +118,7 @@ export default function NotificationsPanel({ visible, onClose }: NotificationsPa
       await apiClient.post('/api/notifications/read-all');
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
     } catch (error) {
-      console.error('[Notifications] Mark all read failed:', error);
+      Logger.error('Mark all read failed', error, { source: 'NotificationsPanel' });
     }
   };
 
@@ -127,7 +128,7 @@ export default function NotificationsPanel({ visible, onClose }: NotificationsPa
     try {
       await apiClient.delete(`/api/notifications/${id}`);
     } catch (error) {
-      console.error('[Notifications] Delete failed:', error);
+      Logger.error('Notification delete failed', error, { source: 'NotificationsPanel' });
     }
   };
 
@@ -136,7 +137,7 @@ export default function NotificationsPanel({ visible, onClose }: NotificationsPa
     try {
       await apiClient.delete('/api/notifications/clear-all');
     } catch (error) {
-      console.error('[Notifications] Clear all failed:', error);
+      Logger.error('Clear all notifications failed', error, { source: 'NotificationsPanel' });
     }
   };
 

@@ -1,7 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { Alert } from 'react-native';
 import { useBreathySounds } from '../hooks/useBreathySounds';
+import { Logger } from '../utils/logger';
 
 // ---------------------------------------------------------------------------
 // PracticeContext — Native Session & Mode Management
@@ -41,12 +43,12 @@ export const PracticeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const savedMode = await AsyncStorage.getItem('breathy_practice_mode');
         if (savedMode === 'live') setIsLiveMode(true);
 
-        const savedPatient = await AsyncStorage.getItem('breathy_active_patient');
+        const savedPatient = await SecureStore.getItemAsync('breathy_active_patient');
         if (savedPatient) {
           setActivePatientState(JSON.parse(savedPatient));
         }
       } catch (e) {
-        console.error('Failed to load practice context from storage', e);
+        Logger.error('Practice context load failed', e, { source: 'PracticeContext' });
       } finally {
         setIsInitialized(true);
       }
@@ -56,16 +58,16 @@ export const PracticeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Persist Live Mode changes
   useEffect(() => {
     if (!isInitialized) return;
-    AsyncStorage.setItem('breathy_practice_mode', isLiveMode ? 'live' : 'relax').catch(console.error);
+    AsyncStorage.setItem('breathy_practice_mode', isLiveMode ? 'live' : 'relax').catch(e => Logger.error('Practice mode save failed', e, { source: 'PracticeContext' }));
   }, [isLiveMode, isInitialized]);
 
   // Persist Active Patient changes
   useEffect(() => {
     if (!isInitialized) return;
     if (activePatient) {
-      AsyncStorage.setItem('breathy_active_patient', JSON.stringify(activePatient)).catch(console.error);
+      SecureStore.setItemAsync('breathy_active_patient', JSON.stringify(activePatient)).catch(e => Logger.error('Active patient save failed', e, { source: 'PracticeContext' }));
     } else {
-      AsyncStorage.removeItem('breathy_active_patient').catch(console.error);
+      SecureStore.deleteItemAsync('breathy_active_patient').catch(e => Logger.error('Active patient delete failed', e, { source: 'PracticeContext' }));
     }
   }, [activePatient, isInitialized]);
 
@@ -100,7 +102,7 @@ export const PracticeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const clearActivePatient = () => {
     setActivePatientState(null);
-    AsyncStorage.removeItem('breathy_active_patient').catch(console.error);
+    SecureStore.deleteItemAsync('breathy_active_patient').catch(e => Logger.error('Active patient clear failed', e, { source: 'PracticeContext' }));
   };
 
   return (

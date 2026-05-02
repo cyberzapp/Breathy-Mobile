@@ -9,6 +9,7 @@ import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../../lib/supabaseClient';
 import { createReceptionist } from '../../services/settingsService';
 import { useColors } from '../../hooks/useColors';
+import { Logger } from '../../utils/logger';
 
 // INDUSTRY STANDARD: Import our deterministic Keyboard wrapper
 import KeyboardAwareModal from '../../components/ui/KeyboardAwareModal';
@@ -89,7 +90,7 @@ export default function ReceptionistsSettingsScreen() {
         setSelectedClinicId(formatted[0]?.id || null);
       }
     } catch (e) {
-      console.error(e);
+      Logger.error('Receptionists fetch failed', e, { source: 'ReceptionistsSettings' });
     } finally {
       setLoading(false);
     }
@@ -139,7 +140,9 @@ export default function ReceptionistsSettingsScreen() {
         url: checkInUrl,
         title: 'Clinic Check-in Link',
       });
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+      Logger.error('Staff action failed', e, { source: 'ReceptionistsSettings' }); 
+    }
   };
 
   const usedCount = receptionists.length;

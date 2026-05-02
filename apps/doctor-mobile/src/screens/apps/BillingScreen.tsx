@@ -22,6 +22,7 @@ import { useColors } from '../../hooks/useColors';
 import SuccessModal from '../../components/ui/SuccessModal';
 import WarningModal from '../../components/ui/WarningModal';
 import ErrorModal from '../../components/ui/ErrorModal';
+import { posthog } from '../../config/posthog';
 
 // ---------------------------------------------------------------------------
 // BillingScreen — Fee Settings + Transaction History (Phase 2C)
@@ -139,6 +140,7 @@ function FeeSettings() {
     setIsSaving(true);
     try {
       await updateConsultationFee(numericFee);
+      posthog.capture('consultation_fee_updated', { fee: numericFee });
       setSuccessMessage('Consultation fee updated!');
     } catch (err: any) {
       setErrorMessage('Failed to update fee. Please try again.');

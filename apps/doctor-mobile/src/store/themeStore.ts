@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Appearance, ColorSchemeName } from 'react-native';
+import { Logger } from '../utils/logger';
 
 // ---------------------------------------------------------------------------
 // Theme Store — Manages app-wide appearance (light / dark / system)
@@ -31,7 +32,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
       await AsyncStorage.setItem('theme_mode', mode);
       set({ mode, resolved: resolveScheme(mode) });
     } catch (e) {
-      console.error('Failed to save theme', e);
+      Logger.error('Theme save failed', e, { source: 'themeStore' });
     }
   },
 
@@ -41,7 +42,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
       const mode = (saved as ThemeMode) || 'system';
       set({ mode, resolved: resolveScheme(mode) });
     } catch (e) {
-      console.error('Failed to load theme', e);
+      Logger.error('Theme load failed', e, { source: 'themeStore' });
     }
   },
 }));

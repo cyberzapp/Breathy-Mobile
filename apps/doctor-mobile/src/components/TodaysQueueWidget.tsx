@@ -29,6 +29,7 @@ import SuccessModal from './ui/SuccessModal';
 import ErrorModal from './ui/ErrorModal';
 import ConfirmationModal from './ui/ConfirmationModal';
 import ActionSheetModal, { ActionSheetOption } from './ui/ActionSheetModal';
+import { Logger } from '../utils/logger';
 
 // ---------------------------------------------------------------------------
 // TodaysQueueWidget — Native mirror of TodaysQueue.jsx + PatientsPanel
@@ -76,7 +77,7 @@ export default function TodaysQueueWidget() {
         setAvailableSessions(sessions || []);
       }
     } catch (err: any) {
-      console.error('[Queue] Fetch failed:', err?.message);
+      Logger.error('Queue fetch failed', err, { source: 'TodaysQueueWidget' });
       setError(err?.message || 'Failed to load queue');
     } finally {
       setIsLoading(false);

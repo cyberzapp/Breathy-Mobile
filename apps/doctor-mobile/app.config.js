@@ -1,0 +1,89 @@
+module.exports = {
+  expo: {
+    name: 'Breathy Doctor',
+    slug: 'breathy-doctor',
+    version: '2.1.1',
+    orientation: 'default',
+    icon: './assets/icon.png',
+    userInterfaceStyle: 'light',
+    splash: {
+      image: './assets/splash-icon.png',
+      resizeMode: 'contain',
+      backgroundColor: '#ffffff',
+    },
+    jsEngine: 'hermes',
+    assetBundlePatterns: ['**/*'],
+    ios: {
+      buildNumber: '2',
+      supportsTablet: true,
+      bundleIdentifier: 'com.breathy.doctor',
+      infoPlist: {
+        NSCameraUsageDescription:
+          'Breathy needs camera access to allow video consultations with patients.',
+        NSMicrophoneUsageDescription:
+          'Breathy needs microphone access to allow you to speak with patients during video calls.',
+      },
+    },
+    android: {
+      notification: {
+        icon: './assets/notification-icon.png',
+        color: '#22ae9e',
+      },
+      adaptiveIcon: {
+        foregroundImage: './assets/adaptive-icon.png',
+        backgroundColor: '#ffffff',
+      },
+      package: 'com.breathy.doctor',
+      versionCode: 11,
+      googleServicesFile: './google-services.json',
+      permissions: [
+        'android.permission.CAMERA',
+        'android.permission.RECORD_AUDIO',
+        'android.permission.MODIFY_AUDIO_SETTINGS',
+      ],
+      softwareKeyboardLayoutMode: 'resize',
+    },
+    web: {
+      favicon: './assets/favicon.png',
+    },
+    plugins: [
+      [
+        'expo-notifications',
+        {
+          icon: './assets/notification-icon.png',
+          color: '#22ae9e',
+          sounds: ['./assets/breathy_alert.wav'],
+        },
+      ],
+      [
+        'expo-camera',
+        {
+          cameraPermission: 'Allow $(PRODUCT_NAME) to access your camera',
+          microphonePermission: 'Allow $(PRODUCT_NAME) to access your microphone',
+          recordAudioAndroid: true,
+        },
+      ],
+      'expo-secure-store',
+      [
+        'expo-build-properties',
+        {
+          android: {
+            enableProguardInReleaseBuilds: true,
+            packagingOptions: {
+              pickFirst: ['lib/**/libc++_shared.so', 'lib/**/libjsc.so'],
+            },
+          },
+        },
+      ],
+      '@react-native-community/datetimepicker',
+    ],
+    extra: {
+      eas: {
+        projectId: '30280d0e-07c1-453a-b620-9cfc66fa6d38',
+      },
+      posthogProjectToken: process.env.POSTHOG_PROJECT_TOKEN,
+      posthogHost: process.env.POSTHOG_HOST,
+    },
+    owner: 'dassuman23',
+  },
+};

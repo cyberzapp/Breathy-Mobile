@@ -2,6 +2,7 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import apiClient from '../lib/apiClient';
+import { Logger } from '../utils/logger';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -55,6 +56,6 @@ export async function registerForPushNotificationsAsync() {
     
     
   } catch (error) {
-    console.error('Failed to register device token:', error);
+    Logger.error('Device token registration failed', error, { source: 'usePushNotifications' });
   }
 }

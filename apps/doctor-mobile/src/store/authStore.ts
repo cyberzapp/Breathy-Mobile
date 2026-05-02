@@ -4,6 +4,8 @@ import { supabase } from '../lib/supabaseClient';
 import { cacheProfile, getCachedProfile } from '../services/offlineCacheService';
 import { registerForPushNotificationsAsync } from '../lib/notifications';
 import { registerDeviceToken, unregisterDeviceToken } from '../services/notificationService';
+import { posthog } from '../config/posthog';
+import { Logger } from '../utils/logger';
 
 // ---------------------------------------------------------------------------
 // Auth Store — Single source of truth for authentication & profile state
@@ -81,6 +83,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           profileStatus: data as ProfileStatus,
           isProfileLoading: false,
         });
+        // Identify user in PostHog with profile data
+        posthog.identify(user.id, {
+          $set: {
+            name: data.full_name,
+            profile_status: data.profile_status,
+          },
+        });
         // Cache profile for offline viewing
         await cacheProfile(data);
 
@@ -103,12 +112,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         });
       }
     } catch (error: any) {
-      console.error('[AuthStore] fetchProfileStatus failed:', error.message);
+      Logger.error('Profile status fetch failed', error, { source: 'AuthStore' });
 
       // Attempt to load from offline cache
       const cached = await getCachedProfile();
       if (cached) {
-        console.log('[AuthStore] Loaded profile from offline cache');
+        Logger.info('Loaded profile from offline cache');
         set({
           profileStatus: cached as ProfileStatus,
           isProfileLoading: false,
@@ -133,9 +142,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           await unregisterDeviceToken(pushToken);
         }
       } catch (e) {
-        console.log('Failed to unregister push token:', e);
+        Logger.warn('Failed to unregister push token', { source: 'AuthStore' });
       }
 
+      posthog.capture('user_signed_out');
+      posthog.reset();
       await supabase.auth.signOut();
       set({
         session: null,
@@ -145,7 +156,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         error: null,
       });
     } catch (error: any) {
-      console.error('[AuthStore] Sign out failed:', error.message);
+      Logger.error('Sign out failed', error, { source: 'AuthStore' });
     }
   },
 

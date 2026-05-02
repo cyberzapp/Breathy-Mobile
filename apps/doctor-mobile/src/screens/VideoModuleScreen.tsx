@@ -6,6 +6,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import Daily, { DailyCall, DailyParticipant, DailyMediaView } from '@daily-co/react-native-daily-js';
+import { Logger } from '../utils/logger';
+import { posthog } from '../config/posthog';
 
 // FIX: Use your centralized API client to guarantee Auth Tokens are attached!
 import apiClient from '../lib/apiClient';
@@ -28,6 +30,7 @@ const checkVideoStatus = async (currentDurationMinutes: number) => {
         const response: any = await apiClient.post('/api/video/check-status', { currentDurationMinutes });
         return response;
     } catch (e) { 
+        Logger.error('Status check failed', e, { currentDurationMinutes });
         return { status: 'error' }; 
     }
 };
@@ -80,11 +83,16 @@ export default function VideoModuleScreen({ route }: any) {
                 co.on('joined-meeting', () => {
                     setIsConnecting(false);
                     updateParticipants();
+                    posthog.capture('video_call_started', { appointment_id: appointmentId });
                 });
                 co.on('participant-joined', updateParticipants);
                 co.on('participant-updated', updateParticipants);
                 co.on('participant-left', updateParticipants);
                 co.on('error', (e: any) => {
+                    Logger.error('Daily Call Object Error', e, { 
+                        source: 'VideoModuleScreen', 
+                        appointment_id: appointmentId 
+                    });
                     setCriticalError({
                         title: 'Connection Error',
                         message: e.errorMsg,
@@ -95,6 +103,7 @@ export default function VideoModuleScreen({ route }: any) {
 
                 await co.join({ url: roomUrl, token });
             } catch (err: any) {
+                Logger.error('Video room join failed', err);
                 setIsConnecting(false);
                 setCriticalError({
                     title: 'Connection Failed',
@@ -169,11 +178,21 @@ export default function VideoModuleScreen({ route }: any) {
     const handleContinuePaid = async () => {
         setShowPaymentModal(false);
         setIsPaidMode(true);
+        posthog.capture('video_call_upgraded_to_paid', {
+            appointment_id: appointmentId,
+            duration_minutes_at_upgrade: Math.floor(callDuration / 60),
+            cost_per_min: costPerMin,
+        });
         const result = await checkVideoStatus(Math.floor(callDuration / 60) + 1);
         if (result.status === 'cut') handleEndCall();
     };
 
     const handleEndCall = () => {
+        posthog.capture('video_call_ended', {
+            appointment_id: appointmentId,
+            duration_seconds: callDuration,
+            was_paid: isPaidMode,
+        });
         callObject?.leave().then(() => callObject?.destroy());
         navigation.navigate('Tabs', { screen: 'Home' });
     };

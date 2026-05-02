@@ -36,6 +36,8 @@ import {
   type PrescriptionLocation,
   type PrescriptionTemplate,
 } from '../../services/prescriptionService';
+import { Logger } from '../../utils/logger';
+import { posthog } from '../../config/posthog';
 import MedicationRow from '../../components/prescription/MedicationRow';
 import InvestigationRow from '../../components/prescription/InvestigationRow';
 import LabReportRow from '../../components/prescription/LabReportRow';
@@ -123,12 +125,12 @@ export default function DigitalPrescriptionForm() {
             const defaultLoc = locs.find((l) => l.is_default) || locs[0];
             if (defaultLoc) setLocationId(defaultLoc.id);
           }
-        } catch {}
+        } catch (e) { Logger.error('Failed to load locations', e); }
         try {
           setIsLoadingTemplates(true);
           const tpls = await listTemplates();
           if (Array.isArray(tpls)) setTemplates(tpls);
-        } catch {} finally { setIsLoadingTemplates(false); }
+        } catch (e) { Logger.error('Failed to load templates', e); } finally { setIsLoadingTemplates(false); }
         try {
           const styleData: any = await getPrescriptionStyle();
           if (styleData?.default_advice) {
@@ -142,7 +144,7 @@ export default function DigitalPrescriptionForm() {
               setAdviceVariables(initialVars);
             }
           }
-        } catch {}
+        } catch (e) { Logger.error('Failed to load style', e); }
       }
     })();
   }, []);
@@ -161,7 +163,7 @@ export default function DigitalPrescriptionForm() {
             setShowPatientModal(true);
           }
         }
-      } catch {}
+      } catch (e) { Logger.error('Failed to find patient', e); }
       setIsFindingPatient(false);
     }
   }, [patientPhone, linkedPatientId]);
@@ -231,8 +233,10 @@ export default function DigitalPrescriptionForm() {
         setInvestigations(data.investigations.map((i: any) => i.test_name || i.name || ''));
       }
       setShowTemplatePicker(false);
+      posthog.capture('prescription_template_loaded', { template_name: data.template_name });
       setSuccessMessage(`Template "${data.template_name}" loaded.`);
     } catch (err: any) {
+      Logger.error('Failed to load template', err);
       setErrorMessage('Failed to load template. Please try again.');
     }
   };
@@ -246,10 +250,15 @@ export default function DigitalPrescriptionForm() {
         medications: medications.filter((m) => m.name),
         investigations: investigations.filter(Boolean).map((n) => ({ name: n })),
       });
+      posthog.capture('prescription_template_saved', {
+        template_name: name,
+        medication_count: medications.filter((m) => m.name).length,
+      });
       setSuccessMessage(`Template "${name}" saved.`);
       // Refresh templates
       try { const tpls = await listTemplates(); if (Array.isArray(tpls)) setTemplates(tpls); } catch {}
     } catch (err: any) {
+      Logger.error('Failed to save template', err);
       setErrorMessage('Failed to save template. Please try again.');
     }
   };
@@ -259,6 +268,7 @@ export default function DigitalPrescriptionForm() {
       setWarningMessage('Please enter a diagnosis first.');
       return;
     }
+    posthog.capture('ai_suggestions_requested', { diagnosis });
     setIsAISuggesting(true);
     try {
       const data: any = await getAISuggestions({ diagnosis });
@@ -271,6 +281,7 @@ export default function DigitalPrescriptionForm() {
         setInvestigations(data.investigations.map((i: any) => i.test_name || i.name || ''));
       }
     } catch (err: any) {
+      Logger.error('AI suggestion failed', err);
       setErrorMessage('Could not fetch AI suggestions. Please try again.');
     } finally {
       setIsAISuggesting(false);
@@ -326,11 +337,22 @@ export default function DigitalPrescriptionForm() {
     setIsSubmitting(true);
     try {
       await createPrescription(payload);
+      posthog.capture('prescription_created', {
+        has_linked_patient: !!linkedPatientId,
+        medication_count: payload.medications.length,
+        has_investigations: investigations.filter(Boolean).length > 0,
+        has_follow_up: !!followUp,
+        has_vitals: !!payload.vitals,
+      });
       playSuccess();
-      setSuccessMessage('Prescription created and sent!');
-      // Navigate back after a short delay to allow the user to see the success message
-      setTimeout(() => navigation.goBack(), 1500);
+      setSuccessMessage('Prescription created!');
+      setTimeout(() => navigation.popToTop(), 1500);
     } catch (err: any) {
+      Logger.error('Prescription submission failed', err);
+      posthog.capture('$exception', {
+        $exception_list: [{ type: err.name, value: err.message, stacktrace: { type: 'raw', frames: err.stack ?? '' } }],
+        $exception_source: 'DigitalPrescriptionForm',
+      });
       playError();
       setErrorMessage('Something went wrong. Please try again.');
     } finally {

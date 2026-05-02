@@ -1,5 +1,6 @@
 // src/hooks/useOnboardingSubmit.ts
 // ---------------------------------------------------------------------------
+import { Logger } from '../utils/logger';
 // Exact port of the web's Step3_Registration.jsx `handleFinalSubmit` logic.
 //
 // At this point in the flow, the 'doctors' row ALREADY EXISTS because:
@@ -25,6 +26,7 @@ import {
   STEP_EDUCATION_SPECIALIZATION,
   STEP_REGISTRATION_DOCUMENTS,
 } from '../services/profileService';
+import { posthog } from '../config/posthog';
 
 export function useOnboardingSubmit() {
   const fetchProfileStatus = useAuthStore((s) => s.fetchProfileStatus);
@@ -94,9 +96,15 @@ export function useOnboardingSubmit() {
       // ---------------------------------------------------------------
       await fetchProfileStatus();
 
+      posthog.capture('onboarding_profile_submitted', {
+        degree_count: form.degrees.length,
+        specialty_count: form.specialties.length,
+        experience_years: parseInt(form.experience, 10) || 0,
+      });
+
       return true;
     } catch (e: any) {
-      console.error('[Onboarding] Submission Error:', e);
+      Logger.error('Onboarding submission failed', e, { source: 'useOnboardingSubmit' });
       setSubmitError('Failed to save profile. Please try again later.');
       return false;
     } finally {

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Logger } from '../utils/logger';
 
 interface AppState {
   hasSeenNativeOnboarding: boolean;
@@ -15,7 +16,7 @@ export const useAppStore = create<AppState>((set) => ({
       await AsyncStorage.setItem('hasSeenNativeOnboarding', JSON.stringify(value));
       set({ hasSeenNativeOnboarding: value });
     } catch (e) {
-      console.error('Failed to save onboarding status', e);
+      Logger.error('Onboarding status save failed', e, { source: 'appStore' });
     }
   },
 
@@ -26,7 +27,7 @@ export const useAppStore = create<AppState>((set) => ({
         set({ hasSeenNativeOnboarding: JSON.parse(value) });
       }
     } catch (e) {
-      console.error('Failed to fetch onboarding status', e);
+      Logger.error('Onboarding status fetch failed', e, { source: 'appStore' });
     }
   },
 }));

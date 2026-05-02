@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { supabase } from './supabaseClient';
+import { Logger } from '../utils/logger';
 
 // ---------------------------------------------------------------------------
 // Centralized Axios API Client for the Breathy Backend
@@ -38,7 +39,7 @@ apiClient.interceptors.request.use(
     return config;
   },
   (error) => {
-    console.error('[API Client] Request interceptor error:', error);
+    Logger.error('API request interceptor failed', error, { source: 'apiClient' });
     return Promise.reject(error);
   }
 );
@@ -54,12 +55,15 @@ apiClient.interceptors.response.use(
       error.response?.data?.message ||
       error.message;
 
-    console.error(
-      `[API Client] ${error.config?.method?.toUpperCase()} ${error.config?.url} -> ${errorMessage}`
-    );
+    Logger.error('API request failed', error, {
+      source: 'apiClient',
+      method: error.config?.method?.toUpperCase(),
+      url: error.config?.url,
+      status: error.response?.status,
+    });
 
     if (error.response?.status === 401) {
-      console.error('[API Client] 401 — Token may be expired.');
+      Logger.error('API 401 — Token expired', error, { source: 'apiClient', url: error.config?.url });
     }
 
     return Promise.reject(new Error(errorMessage));

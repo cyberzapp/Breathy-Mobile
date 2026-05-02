@@ -1,5 +1,6 @@
 import apiClient from '../lib/apiClient';
 import { isFuzzyMatch } from '../utils/stringDiff';
+import { Logger } from '../utils/logger';
 
 export const createDoctorProfile = (profileData: { prefix: string; fullName: string }) => {
   return apiClient.post('/api/doctors/me/profile', profileData);
@@ -129,7 +130,7 @@ export const searchDegrees = async (searchTerm: string = '') => {
     });
 
   } catch (error) {
-    console.error('🔴 [searchDegrees] Mobile API Error:', error);
+    Logger.error('Degree search failed', error, { source: 'profileService' });
     return [];
   }
 };
@@ -155,7 +156,7 @@ export const searchUniversities = async (searchTerm: string) => {
       };
     });
   } catch (error) {
-    console.error('🔴 [searchUniversities] Mobile API Error:', error);
+    Logger.error('University search failed', error, { source: 'profileService' });
     return [];
   }
 };

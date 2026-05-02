@@ -19,6 +19,7 @@ import RecentPrescriptionsWidget from '../components/prescription/RecentPrescrip
 import VideoCallsModal from '../components/VideoCallsModal';
 import { useColors } from '../hooks/useColors';
 import { useBreathySounds } from '../hooks/useBreathySounds';
+import { posthog } from '../config/posthog';
 
 // ---------------------------------------------------------------------------
 // HomeScreen — Native Dashboard for Approved Doctors (Theme-Aware)
@@ -61,6 +62,7 @@ export default function HomeScreen() {
       longPressedRef.current = false;
       return;
     }
+    posthog.capture('dashboard_section_tapped', { section: section.label });
     if (section.nativeRoute) {
       navigation.navigate(section.nativeRoute);
     } else {

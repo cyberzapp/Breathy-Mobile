@@ -18,6 +18,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabaseClient';
 import { Screen } from '../components/Screen';
+import { posthog } from '../config/posthog';
+import { Logger } from '../utils/logger';
 
 // ---------------------------------------------------------------------------
 // LoginScreen
@@ -67,10 +69,11 @@ export default function LoginScreen() {
 
       if (error) throw error;
 
+      posthog.capture('otp_requested', { country_code: COUNTRY_CODE });
       setStep('enter-otp');
       setTimeout(() => otpInputRef.current?.focus(), 200);
     } catch (err: any) {
-      console.error('[Login] Send OTP Error:', err);
+      Logger.error('OTP send failed', err, { source: 'LoginScreen' });
       setError(err.message || 'Failed to send OTP. Please check the number.');
     } finally {
       setIsLoading(false);
@@ -100,12 +103,18 @@ export default function LoginScreen() {
         if (error) throw error;
         if (!data.session || !data.user) throw new Error('Session creation failed.');
 
+        posthog.identify(data.user.id, {
+          $set: { phone: data.user.phone ?? '' },
+          $set_once: { first_login_date: new Date().toISOString() },
+        });
+        posthog.capture('otp_verified', { user_id: data.user.id });
+
         // Session is now persisted in SecureStore by our Supabase adapter.
         // The auth listener in RootNavigator will pick this up automatically
         // and route the user to the correct screen.
-        console.log('✅ [Login] OTP verified successfully. Session established.');
+        Logger.info('OTP verified successfully. Session established.');
       } catch (err: any) {
-        console.error('[Login] Verification Error:', err);
+        Logger.error('OTP verification failed', err, { source: 'LoginScreen' });
         setError(err.message || 'Invalid OTP. Please try again.');
         setIsLoading(false);
       }

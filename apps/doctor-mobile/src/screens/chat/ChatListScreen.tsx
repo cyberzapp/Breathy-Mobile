@@ -5,6 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '../../hooks/useColors';
 import { getActiveSessions } from '../../services/chatService';
+import { Logger } from '../../utils/logger';
 
 export default function ChatListScreen() {
   const navigation = useNavigation<any>();
@@ -48,7 +49,7 @@ export default function ChatListScreen() {
         setChats([]);
       }
     } catch (error) {
-      console.error('[ChatList] Error fetching sessions:', error);
+      Logger.error('Chat sessions fetch failed', error, { source: 'ChatListScreen' });
     } finally {
       setLoading(false);
     }

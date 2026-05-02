@@ -1,5 +1,6 @@
 import apiClient from '../lib/apiClient';
 import { supabase } from '../lib/supabaseClient';
+import { Logger } from '../utils/logger';
 
 // ---------------------------------------------------------------------------
 // Queue Service — Native mirror of the web's doctorService.js queue endpoints
@@ -62,7 +63,7 @@ export const findPatientsByPhone = async (phone: string): Promise<any[]> => {
     console.log(`[DEBUG findPatientsByPhone] Raw response:`, JSON.stringify(rawData).substring(0, 500));
     return rawData as unknown as any[];
   } catch (error: any) {
-    console.error(`[DEBUG findPatientsByPhone] Error:`, error.message);
+    Logger.error('Patient phone search failed', error, { source: 'queueService' });
     throw error;
   }
 };
