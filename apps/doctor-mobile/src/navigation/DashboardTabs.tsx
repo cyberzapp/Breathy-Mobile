@@ -39,12 +39,16 @@ import ChatRoomScreen from '../screens/chat/ChatRoomScreen';
 
 // Phase 2: Apps native screens
 import BreathyDeskScreen from '../screens/apps/BreathyDeskScreen';
+import DietPlanAppScreen from '../screens/DietPlanAppScreen';
 
 // Phase 4: Profile
 import ProfileScreen from '../screens/ProfileScreen';
 import InvoiceManagerScreen from '../screens/apps/InvoiceManagerScreen';
 import FinancialsScreen from '../screens/apps/FinancialsScreen';
 import BillingScreen from '../screens/apps/BillingScreen';
+
+// Phase 3: Patient EMR
+import PatientEMRScreen from '../screens/PatientEMRScreen';
 
 // Phase 5: Prescription screens
 import PrescriptionScreen from '../screens/prescription/PrescriptionScreen';
@@ -66,10 +70,10 @@ function TabNavigator() {
   const navigation = useNavigation<any>();
   const c = useColors();
   const insets = useSafeAreaInsets();
-  
+
   // Responsive Height & Padding Logic
   // baseHeight represents the actual touchable content area.
-  const baseHeight = 60; 
+  const baseHeight = 60;
   // We add the device's physical bottom inset to push the content up into the safe viewing area.
   const bottomInset = insets.bottom > 0 ? insets.bottom : (Platform.OS === 'ios' ? 20 : 10);
   const tabHeight = baseHeight + bottomInset;
@@ -171,15 +175,20 @@ export default function DashboardTabs() {
         options={{ animation: 'slide_from_right' }}
       />
       <Stack.Screen
+        name="PatientEMR"
+        component={PatientEMRScreen}
+        options={{ animation: 'slide_from_right' }}
+      />
+      <Stack.Screen
         name="Calendar"
         component={CalendarScreen}
         options={{ animation: 'slide_from_right' }}
       />
 
-      <Stack.Screen 
-        name="VideoModule" 
-        component={VideoModuleScreen} 
-        options={{ animation: 'fade' }} 
+      <Stack.Screen
+        name="VideoModule"
+        component={VideoModuleScreen}
+        options={{ animation: 'fade' }}
       />
 
       {/* Phase 2: Apps native screens */}
@@ -205,6 +214,7 @@ export default function DashboardTabs() {
       />
       <Stack.Screen name="ChatList" component={ChatListScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="ChatRoom" component={ChatRoomScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="DietPlanApp" component={DietPlanAppScreen} options={{ animation: 'slide_from_right' }} />
       {/* Phase 4: Profile & Settings */}
       <Stack.Screen
         name="Profile"
@@ -275,7 +285,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     // Removed the dynamic OS-based margin bottom, substituting a static offset 
     // to cleanly float above the perfectly centered standard icons.
-    marginTop: -24, 
+    marginTop: -24,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
     shadowRadius: 8,

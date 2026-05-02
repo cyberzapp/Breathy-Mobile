@@ -212,9 +212,8 @@ export default function VaultScreen() {
 
   // Navigation to patient EMR
   const handlePatientPress = (patient: Patient) => {
-    navigation.navigate('SectionWebView', {
-      title: patient.full_name,
-      path: `/patient/${patient.id}`,
+    navigation.navigate('PatientEMR', {
+      patient,
     });
   };
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { View, ActivityIndicator, StyleSheet, Text, StatusBar, Image } from 'react-native';
 import { NavigationContainer, DefaultTheme, DarkTheme, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -9,6 +9,7 @@ import { useAuthStore } from '../store/authStore';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
 import * as SplashScreen from 'expo-splash-screen';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import { usePostHog } from 'posthog-react-native';
 // Screens
 import LoginScreen from '../screens/LoginScreen';
 import DashboardTabs from './DashboardTabs';
@@ -57,6 +58,8 @@ export default function RootNavigator() {
   const error = useAuthStore((s) => s.error);
   const setSession = useAuthStore((s) => s.setSession);
   const fetchProfileStatus = useAuthStore((s) => s.fetchProfileStatus);
+  const posthog = usePostHog();
+  const routeNameRef = useRef<string | undefined>(undefined);
 
   const { isOnline } = useNetworkStatus();
   const hasSeenNativeOnboarding = useAppStore((s) => s.hasSeenNativeOnboarding);
@@ -185,7 +188,24 @@ export default function RootNavigator() {
     <>
       <StatusBar barStyle={resolved === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={resolved === 'dark' ? '#0f172a' : '#f8fafc'} />
       <BottomSheetModalProvider>
-        <NavigationContainer theme={navTheme} ref={navigationRef}>
+        <NavigationContainer 
+          theme={navTheme} 
+          ref={navigationRef}
+          onReady={() => {
+            routeNameRef.current = navigationRef.getCurrentRoute()?.name;
+            if (routeNameRef.current && posthog) {
+              posthog.screen(routeNameRef.current);
+            }
+          }}
+          onStateChange={() => {
+            const previousRouteName = routeNameRef.current;
+            const currentRouteName = navigationRef.getCurrentRoute()?.name;
+            if (previousRouteName !== currentRouteName && currentRouteName && posthog) {
+              posthog.screen(currentRouteName);
+            }
+            routeNameRef.current = currentRouteName;
+          }}
+        >
           <Stack.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
             {!session ? (
               <Stack.Screen name="Login" component={LoginScreen} />

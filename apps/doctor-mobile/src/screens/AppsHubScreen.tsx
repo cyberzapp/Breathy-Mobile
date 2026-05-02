@@ -55,6 +55,14 @@ const CORE_APPS: AppItem[] = [
     route: 'BreathyDesk',
   },
   {
+    title: 'Diet Plans',
+    description: 'Create and manage nutrition templates',
+    icon: 'nutrition-outline',
+    color: '#10b981',
+    bgColor: '#ecfdf5',
+    route: 'DietPlanApp',
+  },
+  {
     title: 'Invoice Manager',
     description: 'Create, send, and track invoices',
     icon: 'receipt-outline',

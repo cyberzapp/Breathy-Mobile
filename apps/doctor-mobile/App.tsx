@@ -64,7 +64,7 @@ export default function App() {
         <PostHogProvider
           client={posthog}
           autocapture={{
-            captureScreens: true,
+            captureScreens: false, // Fix: Disabled because Provider is outside NavigationContainer
             captureTouches: true,
             propsToCapture: ['testID'],
           }}
