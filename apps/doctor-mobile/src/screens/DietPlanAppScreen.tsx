@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useColors } from '../hooks/useColors';
 import { dietPlanService, DietPlan } from '../services/dietPlanService';
+import { syncFoodsFromServer } from '../services/foodDatabaseService';
 import DietBuilderModal from '../components/diet/DietBuilderModal';
 import SharePlanModal from '../components/diet/SharePlanModal';
+import SyncStatusBadge from '../components/diet/SyncStatusBadge';
 import ConfirmationModal from '../components/ui/ConfirmationModal';
+import ErrorModal from '../components/ui/ErrorModal';
+import { Logger } from '../utils/logger';
 
 type TabType = 'templates' | 'archived';
 
@@ -30,22 +34,25 @@ export default function DietPlanAppScreen() {
   const [isShareVisible, setIsShareVisible] = useState(false);
   const [planToDelete, setPlanToDelete] = useState<DietPlan | null>(null);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
+    // Sync food database on first launch (background, non-blocking)
+    syncFoodsFromServer().catch(() => {});
   }, []);
 
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [activeRes, archivedRes] = await Promise.all([
+      const [activePlans, archivedResult] = await Promise.all([
         dietPlanService.getDietPlans(),
         dietPlanService.getArchivedDietPlans(),
       ]);
-      setPlans(Array.isArray(activeRes) ? activeRes : activeRes?.data || []);
-      setArchivedPlans(Array.isArray(archivedRes) ? archivedRes : archivedRes?.data || []);
+      setPlans(activePlans);
+      setArchivedPlans(archivedResult);
     } catch (e) {
-      console.error('Failed to load diet plans:', e);
+      Logger.error('Failed to load diet plans', e, { source: 'DietPlanAppScreen' });
     } finally {
       setIsLoading(false);
     }
@@ -57,8 +64,8 @@ export default function DietPlanAppScreen() {
       await dietPlanService.duplicateDietPlan(plan.id);
       loadData();
     } catch (e) {
-      console.error(e);
-      Alert.alert('Error', 'Failed to duplicate plan');
+      Logger.error('Failed to duplicate plan', e, { source: 'DietPlanAppScreen' });
+      setErrorMessage('Failed to duplicate plan');
       setIsLoading(false);
     }
   };
@@ -69,8 +76,8 @@ export default function DietPlanAppScreen() {
       await dietPlanService.updateDietPlan(plan.id, { is_archived: !plan.is_archived });
       loadData();
     } catch (e) {
-      console.error(e);
-      Alert.alert('Error', 'Failed to update plan archive status');
+      Logger.error('Failed to update archive status', e, { source: 'DietPlanAppScreen' });
+      setErrorMessage('Failed to update plan archive status');
       setIsLoading(false);
     }
   };
@@ -88,8 +95,8 @@ export default function DietPlanAppScreen() {
 
       await dietPlanService.updateDietPlan(plan.id, { is_pinned: !plan.is_pinned });
     } catch (e) {
-      console.error(e);
-      Alert.alert('Error', 'Failed to pin plan');
+      Logger.error('Failed to pin plan', e, { source: 'DietPlanAppScreen' });
+      setErrorMessage('Failed to pin plan');
       loadData(); // Revert on fail
     }
   };
@@ -107,8 +114,8 @@ export default function DietPlanAppScreen() {
       await dietPlanService.deleteDietPlan(planToDelete.id);
       loadData();
     } catch (e) {
-      console.error(e);
-      Alert.alert('Error', 'Failed to delete plan');
+      Logger.error('Failed to delete plan', e, { source: 'DietPlanAppScreen' });
+      setErrorMessage('Failed to delete plan');
       setIsLoading(false);
     }
   };
@@ -203,7 +210,7 @@ export default function DietPlanAppScreen() {
             <Ionicons name="arrow-back" size={24} color={c.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: c.text }]}>Diet Plans</Text>
-          <View style={{ width: 40 }} />
+          <SyncStatusBadge onSyncComplete={loadData} />
         </View>
         <View style={styles.tabsContainer}>
           {renderTab('templates', 'Templates & Active')}
@@ -268,6 +275,12 @@ export default function DietPlanAppScreen() {
         visible={isShareVisible}
         plan={planToShare}
         onClose={() => setIsShareVisible(false)}
+      />
+
+      <ErrorModal
+        visible={!!errorMessage}
+        message={errorMessage || ''}
+        onClose={() => setErrorMessage(null)}
       />
 
     </View>

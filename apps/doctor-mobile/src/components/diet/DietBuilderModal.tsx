@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Modal, TouchableOpacity, StyleSheet, TextInput, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, StyleSheet, TextInput, ScrollView, ActivityIndicator, Alert, Animated, Keyboard, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '../../hooks/useColors';
@@ -17,6 +17,34 @@ export default function DietBuilderModal({ visible, initialPlan, onClose, onSucc
   const c = useColors();
   const insets = useSafeAreaInsets();
   
+  const keyboardHeight = React.useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSubscription = Keyboard.addListener(showEvent, (e) => {
+      Animated.timing(keyboardHeight, {
+        toValue: e.endCoordinates.height,
+        duration: e.duration || 250,
+        useNativeDriver: false,
+      }).start();
+    });
+
+    const hideSubscription = Keyboard.addListener(hideEvent, (e) => {
+      Animated.timing(keyboardHeight, {
+        toValue: 0,
+        duration: e?.duration || 250,
+        useNativeDriver: false,
+      }).start();
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, [keyboardHeight]);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [planName, setPlanName] = useState('');
   const [goals, setGoals] = useState('');
@@ -102,7 +130,7 @@ export default function DietBuilderModal({ visible, initialPlan, onClose, onSucc
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={handleClose}>
-      <View style={[styles.container, { backgroundColor: c.bg, paddingTop: insets.top }]}>
+      <Animated.View style={[styles.container, { backgroundColor: c.bg, paddingTop: insets.top, paddingBottom: keyboardHeight }]}>
         <View style={[styles.header, { borderBottomColor: c.border }]}>
           <TouchableOpacity onPress={handleClose} style={styles.headerButton}>
             <Text style={{ color: c.textSecondary, fontSize: 16 }}>Cancel</Text>
@@ -119,7 +147,7 @@ export default function DietBuilderModal({ visible, initialPlan, onClose, onSucc
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+        <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer} keyboardShouldPersistTaps="handled">
           <View style={[styles.summaryCard, { backgroundColor: c.brandBg }]}>
             <View style={styles.summaryItem}>
               <Text style={[styles.summaryLabel, { color: c.brand }]}>Daily Cals</Text>
@@ -187,7 +215,7 @@ export default function DietBuilderModal({ visible, initialPlan, onClose, onSucc
           <MealBuilder meals={meals} onChange={setMeals} />
 
         </ScrollView>
-      </View>
+      </Animated.View>
     </Modal>
   );
 }
