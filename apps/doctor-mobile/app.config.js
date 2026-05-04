@@ -13,6 +13,12 @@ module.exports = {
     },
     jsEngine: 'hermes',
     assetBundlePatterns: ['**/*'],
+    updates: {
+      url: 'https://u.expo.dev/30280d0e-07c1-453a-b620-9cfc66fa6d38'
+    },
+    runtimeVersion: {
+      policy: 'appVersion'
+    },
     ios: {
       buildNumber: '2',
       supportsTablet: true,
