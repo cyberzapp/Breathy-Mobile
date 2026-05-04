@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/authStore';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -37,6 +38,7 @@ type SectionWebViewParams = {
 };
 
 export default function SectionWebViewScreen() {
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const route = useRoute<RouteProp<SectionWebViewParams, 'SectionWebView'>>();
   const { title, path } = route.params;
@@ -99,7 +101,7 @@ export default function SectionWebViewScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: c.bg }]}>
+    <View style={[styles.container, { backgroundColor: c.bg, paddingTop: insets.top }]}>
       {/* Header with back button */}
       <View style={[styles.header, { backgroundColor: c.card, borderBottomColor: c.border }]}>
         <TouchableOpacity
