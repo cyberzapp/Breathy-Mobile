@@ -2,7 +2,7 @@ module.exports = {
   expo: {
     name: 'Breathy Doctor',
     slug: 'breathy-doctor',
-    version: '2.1.1',
+    version: '2.1.2',
     orientation: 'default',
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',

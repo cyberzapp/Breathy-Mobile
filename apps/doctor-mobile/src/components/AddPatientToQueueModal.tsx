@@ -6,7 +6,9 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import {
   findPatientsByPhone,
@@ -38,6 +40,8 @@ export default function AddPatientToQueueModal({ visible, onClose, onAdded, onSu
 
   const [newPatientName, setNewPatientName] = useState('');
   const [newPatientGender, setNewPatientGender] = useState('other');
+  const [newPatientDob, setNewPatientDob] = useState<Date | null>(null);
+  const [showDobPicker, setShowDobPicker] = useState(false);
   const [warningMessage, setWarningMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -49,6 +53,8 @@ export default function AddPatientToQueueModal({ visible, onClose, onAdded, onSu
       setHasSearched(false);
       setNewPatientName('');
       setNewPatientGender('other');
+      setNewPatientDob(null);
+      setShowDobPicker(false);
     }
   }, [visible]);
 
@@ -89,6 +95,7 @@ export default function AddPatientToQueueModal({ visible, onClose, onAdded, onSu
           fullName: newPatientName,
           phone: `91${phone}`,
           gender: newPatientGender,
+          ...(newPatientDob ? { dob: newPatientDob.toISOString().split('T')[0] } : {}),
         });
       }
       if (onSuccess) {
@@ -122,10 +129,10 @@ export default function AddPatientToQueueModal({ visible, onClose, onAdded, onSu
               style={styles.input}
               keyboardType="number-pad"
               placeholder="Enter 10-digit number"
-              maxLength={15}
+              maxLength={10}
               value={phone}
               onChangeText={(val) => {
-                setPhone(val.replace(/[^0-9]/g, '').slice(-10));
+                setPhone(val.replace(/[^0-9]/g, '').slice(0, 10));
                 setPatientFound(null);
                 setHasSearched(false);
               }}
@@ -185,6 +192,56 @@ export default function AddPatientToQueueModal({ visible, onClose, onAdded, onSu
             onChangeText={setNewPatientName}
             autoFocus={true}
           />
+
+          <Text style={styles.label}>Date of Birth <Text style={{ fontWeight: '400', color: '#94a3b8' }}>(optional)</Text></Text>
+          {Platform.OS === 'ios' ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20, gap: 12 }}>
+              <DateTimePicker
+                value={newPatientDob || new Date(2000, 0, 1)}
+                mode="date"
+                display="compact"
+                maximumDate={new Date()}
+                onChange={(_, d) => d && setNewPatientDob(d)}
+                style={{ height: 40 }}
+              />
+              {newPatientDob && (
+                <TouchableOpacity onPress={() => setNewPatientDob(null)}>
+                  <Ionicons name="close-circle" size={20} color="#94a3b8" />
+                </TouchableOpacity>
+              )}
+            </View>
+          ) : (
+            <>
+              <TouchableOpacity
+                style={styles.datePickerBtn}
+                onPress={() => setShowDobPicker(true)}
+              >
+                <Ionicons name="calendar-outline" size={20} color="#64748b" />
+                <Text style={[styles.datePickerText, !newPatientDob && { color: '#94a3b8' }]}>
+                  {newPatientDob
+                    ? newPatientDob.toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })
+                    : 'Select date of birth'}
+                </Text>
+                {newPatientDob && (
+                  <TouchableOpacity onPress={() => setNewPatientDob(null)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                    <Ionicons name="close-circle" size={18} color="#94a3b8" />
+                  </TouchableOpacity>
+                )}
+              </TouchableOpacity>
+              {showDobPicker && (
+                <DateTimePicker
+                  value={newPatientDob || new Date(2000, 0, 1)}
+                  mode="date"
+                  display="default"
+                  maximumDate={new Date()}
+                  onChange={(_, d) => {
+                    setShowDobPicker(false);
+                    if (d) setNewPatientDob(d);
+                  }}
+                />
+              )}
+            </>
+          )}
 
           <Text style={styles.label}>Gender</Text>
           <View style={styles.genderRow}>
@@ -261,4 +318,6 @@ const styles = StyleSheet.create({
   footerRow: { flexDirection: 'row', gap: 12 },
   backBtn: { paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12, borderWidth: 1, borderColor: '#cbd5e1', alignItems: 'center', justifyContent: 'center' },
   backBtnText: { fontSize: 16, fontWeight: '600', color: '#475569' },
+  datePickerBtn: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, marginBottom: 20, gap: 10 },
+  datePickerText: { flex: 1, fontSize: 15, fontWeight: '500', color: '#0f172a' },
 });

@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { findPatientsByPhone, addWalkInPatient } from '../services/queueService';
+import { findPatientsByPhone } from '../services/queueService';
 import { createManualAppointment } from '../services/calendarService';
 import { useAuthStore } from '../store/authStore';
 
@@ -104,27 +104,18 @@ export default function OfflineBookingModal({ visible, onClose, onBooked, onSucc
       setWarningMessage('Please enter the patient name.');
       return;
     }
-    setIsProcessing(true);
-    try {
-      // Adds patient to live db
-      await addWalkInPatient({
-        fullName: newPatientName,
-        phone: `91${phone}`,
-        gender: newPatientGender,
-      });
-      // Immediately refetch to get their new Patient ID
-      const results = await findPatientsByPhone(phone);
-      if (results && results.length > 0) {
-        setPatientFound(results[0]);
-        setStep('appointment_details');
-      } else {
-        setErrorMessage('Patient created but could not be retrieved.');
-      }
-    } catch (error: any) {
-      setErrorMessage('Failed to create patient record. Please try again.');
-    } finally {
-      setIsProcessing(false);
-    }
+    // Don't create the patient here — we'll pass patientData to
+    // createManualAppointment with isNewPatient: true, which handles
+    // patient creation + appointment in a single atomic backend call.
+    // This avoids the duplicate appointment bug from using addWalkInPatient.
+    setPatientFound({
+      id: null, // Signals "new patient" in handleBookAppointment
+      full_name: newPatientName,
+      phone_no: `91${phone}`,
+      gender: newPatientGender,
+      _isNew: true,
+    });
+    setStep('appointment_details');
   };
 
   const handleBookAppointment = async () => {
@@ -134,14 +125,27 @@ export default function OfflineBookingModal({ visible, onClose, onBooked, onSucc
     try {
       const startTime = date;
       const endTime = new Date(startTime.getTime() + duration * 60000);
-      
-      // Creates appointment in live DB
-      await createManualAppointment({
-        patientId: patientFound.id,
+
+      const payload: any = {
         startTime: startTime.toISOString(),
         endTime: endTime.toISOString(),
         appointmentType: apptType,
-      });
+      };
+
+      if (patientFound._isNew) {
+        // New patient — let the backend create patient + appointment atomically
+        payload.isNewPatient = true;
+        payload.patientData = {
+          fullName: patientFound.full_name,
+          phone: patientFound.phone_no,
+          gender: patientFound.gender,
+        };
+      } else {
+        // Existing patient — just link by ID
+        payload.patientId = patientFound.id;
+      }
+
+      await createManualAppointment(payload);
 
       if (onSuccess) {
         onSuccess('Appointment booked successfully.');
@@ -178,10 +182,10 @@ export default function OfflineBookingModal({ visible, onClose, onBooked, onSucc
               style={styles.input}
               keyboardType="number-pad"
               placeholder="Enter 10-digit number"
-              maxLength={15} // allow paste with +91
+              maxLength={10}
               value={phone}
               onChangeText={(val) => {
-                setPhone(val.replace(/[^0-9]/g, '').slice(-10));
+                setPhone(val.replace(/[^0-9]/g, '').slice(0, 10));
                 setPatientFound(null);
                 setHasSearched(false);
               }}

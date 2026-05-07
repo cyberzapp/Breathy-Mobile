@@ -2,7 +2,7 @@
   "expo": {
     "name": "Breathy Doctor",
     "slug": "breathy-doctor",
-    "version": "2.1.1",
+    "version": "2.1.2",
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -33,7 +33,7 @@
     "android": {
       "notification": {
         "icon": "./assets/notification-icon.png",
-        "color": "#22ae9e" 
+        "color": "#22ae9e"
       },
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -56,7 +56,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/notification-icon.png", 
+          "icon": "./assets/notification-icon.png",
           "color": "#22ae9e",
           "sounds": [
             "./assets/breathy_alert.wav"

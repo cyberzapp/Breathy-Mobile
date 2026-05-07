@@ -21,6 +21,8 @@ import OnboardingScreen from '../screens/OnboardingScreen';
 import { useAppStore } from '../store/appStore';
 import { useThemeStore } from '../store/themeStore';
 import { registerForPushNotificationsAsync } from '../hooks/usePushNotifications';
+import { useOTAUpdates } from '../hooks/useOTAUpdates';
+import UpdateModal from '../components/ui/UpdateModal';
 import { Logger } from '../utils/logger';
 // ---------------------------------------------------------------------------
 // RootNavigator — The Core Routing Engine
@@ -48,6 +50,16 @@ const Stack = createNativeStackNavigator();
 export const navigationRef = createNavigationContainerRef<any>();
 
 export default function RootNavigator() {
+  // ── OTA Updates (no-op in __DEV__) ──
+  const {
+    updateModalVisible,
+    updatePhase,
+    updateProgress,
+    isForceUpdate,
+    onUpdate,
+    onDismiss,
+    onRetry,
+  } = useOTAUpdates();
   // =========================================================================
   // 1. ALL HOOKS MUST GO AT THE TOP (NO EXCEPTIONS)
   // =========================================================================
@@ -232,6 +244,17 @@ export default function RootNavigator() {
           </Stack.Navigator>
         </NavigationContainer>
       </BottomSheetModalProvider>
+
+      {/* ── OTA Update Modal (root-level overlay) ── */}
+      <UpdateModal
+        visible={updateModalVisible}
+        phase={updatePhase}
+        progress={updateProgress}
+        forceUpdate={isForceUpdate}
+        onUpdate={onUpdate}
+        onDismiss={onDismiss}
+        onRetry={onRetry}
+      />
     </>
   );
 }

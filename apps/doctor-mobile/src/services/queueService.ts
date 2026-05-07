@@ -57,10 +57,8 @@ export const updateWaitlistStatus = (
 
 /** Search patients by phone number */
 export const findPatientsByPhone = async (phone: string): Promise<any[]> => {
-  console.log(`[DEBUG findPatientsByPhone] Requesting for phone:`, phone);
   try {
     const rawData = await apiClient.get('/api/queue/find-patient-by-phone', { params: { phone } });
-    console.log(`[DEBUG findPatientsByPhone] Raw response:`, JSON.stringify(rawData).substring(0, 500));
     return rawData as unknown as any[];
   } catch (error: any) {
     Logger.error('Patient phone search failed', error, { source: 'queueService' });
