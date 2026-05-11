@@ -1,0 +1,114 @@
+{
+  "project_info": {
+    "project_number": "93753291723",
+    "project_id": "breathy-push",
+    "storage_bucket": "breathy-push.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:93753291723:android:49f5990d73d97bfa6ebc4e",
+        "android_client_info": {
+          "package_name": "com.breathy.aura"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "93753291723-8e8a44lg1c62csk25s0lpl08pun89okj.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.breathy.aura",
+            "certificate_hash": "d1e89e79c8c6bc39d69ab6eeca35a6e03b97b104"
+          }
+        },
+        {
+          "client_id": "93753291723-mo3e06t594g0t93mercq53tldlj1dfar.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBeF-fRqftVZMR2SCZ2QiuquTeo8wCPXK0"
+        },
+        {
+          "current_key": "AIzaSyCRSPLaHMY1so2_QKKHS1u3lw2JZ99VyH0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "93753291723-2aiu05nd0vqi14u2avme9rgm5f7oasc3.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:93753291723:android:3114eeb33592e7656ebc4e",
+        "android_client_info": {
+          "package_name": "com.breathy.doctor"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "93753291723-mo3e06t594g0t93mercq53tldlj1dfar.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBeF-fRqftVZMR2SCZ2QiuquTeo8wCPXK0"
+        },
+        {
+          "current_key": "AIzaSyCRSPLaHMY1so2_QKKHS1u3lw2JZ99VyH0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "93753291723-2aiu05nd0vqi14u2avme9rgm5f7oasc3.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:93753291723:android:e9bc15f7c547a61d6ebc4e",
+        "android_client_info": {
+          "package_name": "com.breathy.patient"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "93753291723-mo3e06t594g0t93mercq53tldlj1dfar.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBeF-fRqftVZMR2SCZ2QiuquTeo8wCPXK0"
+        },
+        {
+          "current_key": "AIzaSyCRSPLaHMY1so2_QKKHS1u3lw2JZ99VyH0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "93753291723-2aiu05nd0vqi14u2avme9rgm5f7oasc3.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
