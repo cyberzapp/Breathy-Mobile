@@ -11,7 +11,7 @@ import {
   StyleSheet,
   StatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { useColors } from '../../hooks/useColors';
@@ -27,6 +27,7 @@ export default function LoginScreen() {
   const c = useColors();
   const resolved = useThemeStore((s) => s.resolved);
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const insets = useSafeAreaInsets();
   const [phoneNumber, setPhoneNumber] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -62,7 +63,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: c.bg }]}>
+    <View style={[styles.container, { backgroundColor: c.bg, paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <StatusBar barStyle={resolved === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={c.bg} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -129,12 +130,12 @@ export default function LoginScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  container: {
     flex: 1,
   },
   keyboardView: {

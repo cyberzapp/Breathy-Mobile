@@ -32,7 +32,10 @@ export default function ProfileScreen() {
   const navigation = useNavigation<any>();
   const c = useColors();
   const insets = useSafeAreaInsets();
-  const { session, profile: storeProfile, fetchProfile, signOut } = useAuthStore();
+  const session = useAuthStore((state) => state.session);
+  const storeProfile = useAuthStore((state) => state.profile);
+  const fetchProfile = useAuthStore((state) => state.fetchProfile);
+  const signOut = useAuthStore((state) => state.signOut);
   
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);

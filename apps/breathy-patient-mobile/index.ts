@@ -17,6 +17,7 @@ ErrorUtils.setGlobalHandler((error, isFatal) => {
   }
 });
 
+import './src/config/i18n';
 import App from './App';
 
 // registerRootComponent calls AppRegistry.registerComponent('main', () => App);

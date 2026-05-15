@@ -22,7 +22,7 @@ export default function ChatRoomScreen() {
   const navigation = useNavigation<any>();
   const c = useColors();
   const insets = useSafeAreaInsets();
-  const { session } = useAuthStore();
+  const session = useAuthStore((state) => state.session);
   
   const { sessionId, doctorName } = route.params || {};
 

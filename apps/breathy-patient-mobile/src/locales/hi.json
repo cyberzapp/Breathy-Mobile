@@ -1,0 +1,19 @@
+{
+  "common": {
+    "continue": "जारी रखें",
+    "skip": "छोड़ें",
+    "getStarted": "शुरू करें",
+    "selectLanguage": "भाषा चुनें"
+  },
+  "onboarding": {
+    "welcomeTitle": "आपका अंतिम स्वास्थ्य साथी",
+    "welcomeSubtitle": "महत्वपूर्ण आँकड़ों को ट्रैक करें, शीर्ष डॉक्टरों से परामर्श लें और अपनी भलाई पर नियंत्रण रखें।",
+    "languageTitle": "अपनी भाषा चुनें",
+    "languageSubtitle": "आप इसे बाद में सेटिंग में बदल सकते हैं।"
+  },
+  "auth": {
+    "enterPhone": "अपना फ़ोन नंबर दर्ज करें",
+    "phonePlaceholder": "फ़ोन नंबर",
+    "sendOtp": "OTP भेजें"
+  }
+}

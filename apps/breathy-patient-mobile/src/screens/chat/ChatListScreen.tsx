@@ -20,7 +20,7 @@ export default function ChatListScreen() {
   const c = useColors();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
-  const { session } = useAuthStore();
+  const session = useAuthStore((state) => state.session);
   
   const [sessions, setSessions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);

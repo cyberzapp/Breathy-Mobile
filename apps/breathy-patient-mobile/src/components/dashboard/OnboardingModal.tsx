@@ -23,7 +23,7 @@ import { useAuthStore } from '../../store/authStore';
  */
 export default function OnboardingModal() {
   const c = useColors();
-  const { completeOnboarding } = useAuthStore();
+  const completeOnboarding = useAuthStore((state) => state.completeOnboarding);
 
   const [fullName, setFullName] = useState('');
   const [isSaving, setIsSaving] = useState(false);

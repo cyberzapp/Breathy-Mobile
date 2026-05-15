@@ -23,10 +23,19 @@ import BookingSuccessScreen from '../screens/search/BookingSuccessScreen';
 import { useOTAUpdates } from '../hooks/useOTAUpdates';
 import UpdateModal from '../components/ui/UpdateModal';
 
+import LanguageSelectionScreen from '../screens/auth/LanguageSelectionScreen';
+import WelcomeCarouselScreen from '../screens/auth/WelcomeCarouselScreen';
+import { useAppStore } from '../store/appStore';
+
 const Stack = createNativeStackNavigator();
 
 export default function RootNavigator() {
-  const { session, setSession, isLoading } = useAuthStore();
+  const session = useAuthStore((state) => state.session);
+  const setSession = useAuthStore((state) => state.setSession);
+  const isLoading = useAuthStore((state) => state.isLoading);
+  const hasCompletedOnboarding = useAppStore((state) => state.hasCompletedOnboarding);
+  const isAppStoreReady = useAppStore((state) => state.isAppStoreReady);
+  const initializeAppStore = useAppStore((state) => state.initializeAppStore);
   const c = useColors();
   const [isAuthInitialized, setIsAuthInitialized] = useState(false);
 
@@ -40,6 +49,10 @@ export default function RootNavigator() {
     onDismiss,
     onRetry,
   } = useOTAUpdates();
+
+  useEffect(() => {
+    initializeAppStore();
+  }, [initializeAppStore]);
 
   useEffect(() => {
     let isMounted = true;
@@ -88,17 +101,13 @@ export default function RootNavigator() {
   }, [setSession]);
 
   useEffect(() => {
+    // FORCE HIDE splash screen after 1s to see what is underneath
+    setTimeout(() => {
+      SplashScreen.hideAsync().catch(console.warn);
+    }, 1000);
+  }, []);
 
-    // Hide splash screen once auth is initialized AND store is not loading
-    if (isAuthInitialized && !isLoading) {
-
-      SplashScreen.hideAsync().catch((e) => {
-        console.warn('Failed to hide splash screen', { error: e.message });
-      });
-    }
-  }, [isAuthInitialized, isLoading]);
-
-  if (!isAuthInitialized || isLoading) {
+  if (!isAuthInitialized || isLoading || !isAppStoreReady) {
 
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: c.bg }}>
@@ -113,7 +122,14 @@ export default function RootNavigator() {
     <>
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {!session ? (
+        {!hasCompletedOnboarding ? (
+          <Stack.Group>
+            <Stack.Screen name="LanguageSelection" component={LanguageSelectionScreen} />
+            <Stack.Screen name="WelcomeCarousel" component={WelcomeCarouselScreen} />
+            <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen name="OTPVerification" component={OTPVerificationScreen} />
+          </Stack.Group>
+        ) : !session ? (
           // Auth Stack
           <>
             <Stack.Screen name="Login" component={LoginScreen} />

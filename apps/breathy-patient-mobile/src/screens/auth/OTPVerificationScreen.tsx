@@ -11,7 +11,7 @@ import {
   StyleSheet,
   StatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { useColors } from '../../hooks/useColors';
@@ -20,6 +20,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useThemeStore } from '../../store/themeStore';
+import { useAppStore } from '../../store/appStore';
 
 const COUNTRY_CODE = '+91';
 
@@ -33,6 +34,7 @@ export default function OTPVerificationScreen() {
   const resolved = useThemeStore((s) => s.resolved);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'OTPVerification'>>();
+  const insets = useSafeAreaInsets();
   const { phoneNumber } = route.params;
 
   const [otp, setOtp] = useState('');
@@ -67,6 +69,8 @@ export default function OTPVerificationScreen() {
       });
       posthog.capture('otp_verified', { user_id: data.user.id });
 
+      useAppStore.getState().setHasCompletedOnboarding(true);
+
       console.log('OTP verified successfully');
       // Navigation will be handled by RootNavigator's auth listener
     } catch (err: any) {
@@ -100,7 +104,7 @@ export default function OTPVerificationScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: c.bg }]}>
+    <View style={[styles.container, { backgroundColor: c.bg, paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <StatusBar barStyle={resolved === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={c.bg} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -201,12 +205,12 @@ export default function OTPVerificationScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  container: {
     flex: 1,
   },
   keyboardView: {

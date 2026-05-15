@@ -20,7 +20,7 @@ export default function PrescriptionsScreen() {
   const c = useColors();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
-  const { session } = useAuthStore();
+  const session = useAuthStore((state) => state.session);
 
   const [prescriptions, setPrescriptions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);

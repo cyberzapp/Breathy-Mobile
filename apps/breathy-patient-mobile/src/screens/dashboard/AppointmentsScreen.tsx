@@ -18,7 +18,7 @@ import dayjs from 'dayjs';
 export default function AppointmentsScreen() {
   const c = useColors();
   const insets = useSafeAreaInsets();
-  const { session } = useAuthStore();
+  const session = useAuthStore((state) => state.session);
   
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
   const [appointments, setAppointments] = useState<any[]>([]);

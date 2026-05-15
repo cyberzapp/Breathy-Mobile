@@ -1,0 +1,19 @@
+{
+  "common": {
+    "continue": "Continue",
+    "skip": "Skip",
+    "getStarted": "Get Started",
+    "selectLanguage": "Select Language"
+  },
+  "onboarding": {
+    "welcomeTitle": "Your Ultimate Health Companion",
+    "welcomeSubtitle": "Track vitals, consult top doctors, and take control of your well-being.",
+    "languageTitle": "Choose your language",
+    "languageSubtitle": "You can always change this later in settings."
+  },
+  "auth": {
+    "enterPhone": "Enter your phone number",
+    "phonePlaceholder": "Phone number",
+    "sendOtp": "Send OTP"
+  }
+}
