@@ -7,13 +7,18 @@ import {
   Image,
   ActivityIndicator,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useColors } from '../../hooks/useColors';
 import { getPublicClinicProfile } from '../../services/patientService';
+import ErrorModal from '../../components/ui/ErrorModal';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as short from 'short-uuid';
+
+const translator = (short as any).createTranslator ? (short as any).createTranslator() : ((short as any).default ? (short as any).default() : (short as any)());
+
 export default function ClinicProfileScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
@@ -24,10 +29,11 @@ export default function ClinicProfileScreen() {
 
   const [clinic, setClinic] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!shortId) {
-      Alert.alert('Error', 'Clinic ID not provided.');
+      setErrorMessage('Clinic ID not provided.');
       navigation.goBack();
       return;
     }
@@ -41,7 +47,7 @@ export default function ClinicProfileScreen() {
       setClinic(data);
     } catch (error) {
       console.error('Failed to load clinic profile', error, { source: 'ClinicProfileScreen' });
-      Alert.alert('Error', 'Could not load clinic profile.');
+      setErrorMessage('Could not load clinic profile.');
     } finally {
       setIsLoading(false);
     }
@@ -68,10 +74,32 @@ export default function ClinicProfileScreen() {
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }} bounces={false}>
         {/* Cover Image */}
         <View style={styles.coverContainer}>
-          <Image 
-            source={{ uri: clinic.cover_image || 'https://via.placeholder.com/600x300' }} 
-            style={styles.coverImage} 
-          />
+          {clinic.cover_image ? (
+            <Image 
+              source={{ uri: clinic.cover_image }} 
+              style={styles.coverImage} 
+            />
+          ) : (
+            <LinearGradient
+              colors={['#1b8c7f', '#22ae9e', '#2dd4bf']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.coverImage}
+            >
+              <View style={styles.coverPattern}>
+                {[...Array(6)].map((_, i) => (
+                  <View key={i} style={[styles.patternCircle, {
+                    width: 60 + i * 20,
+                    height: 60 + i * 20,
+                    borderRadius: 30 + i * 10,
+                    top: 20 + (i % 3) * 50,
+                    left: 30 + (i % 4) * 70,
+                    opacity: 0.08 + i * 0.02,
+                  }]} />
+                ))}
+              </View>
+            </LinearGradient>
+          )}
           {/* Back Button Overlay */}
           <TouchableOpacity 
             style={[styles.backButton, { top: insets.top + 10 }]} 
@@ -83,10 +111,16 @@ export default function ClinicProfileScreen() {
 
         <View style={styles.content}>
           <View style={[styles.logoContainer, { borderColor: c.border }]}>
-            <Image 
-              source={{ uri: clinic.logo_url || 'https://via.placeholder.com/100' }} 
-              style={styles.logo} 
-            />
+            {clinic.logo_url ? (
+              <Image 
+                source={{ uri: clinic.logo_url }} 
+                style={styles.logo} 
+              />
+            ) : (
+              <View style={[styles.logo, { backgroundColor: '#f0fdf4', alignItems: 'center', justifyContent: 'center' }]}>
+                <Ionicons name="business" size={36} color="#22ae9e" />
+              </View>
+            )}
           </View>
           
           <Text style={[styles.clinicName, { color: c.text }]}>{clinic.name}</Text>
@@ -115,43 +149,73 @@ export default function ClinicProfileScreen() {
             </View>
           </View>
 
-          <Text style={[styles.sectionTitle, { color: c.text }]}>About</Text>
+          {clinic.is_directory_entry && (
+            <View style={{ marginTop: 16, padding: 16, backgroundColor: '#eff6ff', borderRadius: 12, borderWidth: 1, borderColor: '#bfdbfe', borderStyle: 'dashed' }}>
+              <Text style={{ color: '#1e40af', fontWeight: '600', marginBottom: 12 }}>Is this your clinic?</Text>
+              <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#2563eb', paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8, alignSelf: 'flex-start' }}>
+                <Ionicons name="checkmark-circle" size={18} color="#fff" style={{ marginRight: 8 }} />
+                <Text style={{ color: '#fff', fontWeight: '500' }}>Claim This Clinic</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          <Text style={[styles.sectionTitle, { color: c.text, marginTop: 24 }]}>About</Text>
           <Text style={[styles.aboutText, { color: c.textSecondary }]}>
             {clinic.description || 'A state-of-the-art medical facility dedicated to providing the highest quality care to our patients.'}
           </Text>
 
-          <Text style={[styles.sectionTitle, { color: c.text, marginTop: 24 }]}>Our Doctors</Text>
-          {clinic.doctors?.map((doc: any, index: number) => (
-            <TouchableOpacity 
-              key={index}
-              style={[styles.doctorCard, { backgroundColor: c.card, borderColor: c.border }]}
-              onPress={() => navigation.navigate('DoctorProfile', { doctorId: doc.id })}
-            >
-              <Image 
-                source={{ uri: doc.profile_photo_url || 'https://via.placeholder.com/50' }} 
-                style={styles.doctorAvatar} 
-              />
-              <View style={styles.doctorInfo}>
-                <Text style={[styles.doctorName, { color: c.text }]}>Dr. {doc.full_name}</Text>
-                <Text style={[styles.doctorSpec, { color: c.textSecondary }]}>
-                  {doc.specialty}
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={c.textTertiary} />
-            </TouchableOpacity>
-          ))}
+          <Text style={[styles.sectionTitle, { color: c.text, marginTop: 24 }]}>Doctors at this Location</Text>
+          {(!clinic.doctors || clinic.doctors.length === 0) ? (
+            <View style={{ padding: 24, backgroundColor: c.card, borderRadius: 12, borderColor: c.border, borderWidth: 1, alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ color: c.textSecondary, textAlign: 'center' }}>No doctors currently listed for this location.</Text>
+            </View>
+          ) : (
+            clinic.doctors.map((doc: any, index: number) => {
+              const finalId = translator.fromUUID(doc.profile_id);
+              return (
+                <TouchableOpacity 
+                  key={index}
+                  style={[styles.doctorCard, { backgroundColor: c.card, borderColor: c.border }]}
+                  onPress={() => navigation.navigate('DoctorProfile', { doctorId: finalId })}
+                >
+                {doc.profile_photo_url ? (
+                  <Image 
+                    source={{ uri: doc.profile_photo_url }} 
+                    style={styles.doctorAvatar} 
+                  />
+                ) : (
+                  <View style={[styles.doctorAvatar, { backgroundColor: c.brandBg || '#e0f2f1', alignItems: 'center', justifyContent: 'center' }]}>
+                    <Text style={{ color: c.brand, fontSize: 20, fontWeight: '700' }}>
+                      {doc.full_name?.charAt(0)?.toUpperCase() || 'D'}
+                    </Text>
+                  </View>
+                )}
+                <View style={styles.doctorInfo}>
+                  <Text style={[styles.doctorName, { color: c.text }]}>{doc.prefix || 'Dr.'} {doc.full_name}</Text>
+                  <Text style={[styles.doctorSpec, { color: c.textSecondary }]}>
+                    {doc.specialty || doc.primary_specialty || 'Doctor'}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={c.textTertiary} />
+              </TouchableOpacity>
+              );
+            })
+          )}
+
+          <Text style={[styles.sectionTitle, { color: c.text, marginTop: 24 }]}>Location</Text>
+          <View style={{ height: 200, backgroundColor: c.card, borderRadius: 12, borderColor: c.border, borderWidth: 1, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="map-outline" size={48} color={c.textTertiary} />
+            <Text style={{ color: c.textSecondary, marginTop: 8 }}>Map data unavailable</Text>
+          </View>
         </View>
       </ScrollView>
 
-      {/* Book Appointment CTA */}
-      <View style={[styles.footer, { paddingBottom: insets.bottom || 20, backgroundColor: c.card, borderTopColor: c.border }]}>
-        <TouchableOpacity 
-          style={[styles.bookButton, { backgroundColor: c.brand }]}
-          onPress={() => navigation.navigate('Search')}
-        >
-          <Text style={styles.bookButtonText}>View Availability</Text>
-        </TouchableOpacity>
-      </View>
+
+      <ErrorModal
+        visible={!!errorMessage}
+        message={errorMessage || ''}
+        onClose={() => setErrorMessage(null)}
+      />
     </View>
   );
 }
@@ -279,5 +343,14 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '700',
+  },
+  coverPattern: {
+    flex: 1,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  patternCircle: {
+    position: 'absolute',
+    backgroundColor: '#ffffff',
   },
 });

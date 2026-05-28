@@ -4,7 +4,10 @@ import { supabase } from '../lib/supabase';
 import { posthog } from '../config/posthog';
 import {
   claimPatientProfile,
+  registerDeviceToken
 } from '../services/patientService';
+import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
 // ---------------------------------------------------------------------------
 // Auth Store — Single source of truth for patient authentication & profile state
 // ---------------------------------------------------------------------------

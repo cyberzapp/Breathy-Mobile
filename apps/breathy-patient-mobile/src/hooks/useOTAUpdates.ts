@@ -2,6 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import * as Updates from 'expo-updates';
 import { Logger } from '../utils/logger';
 import type { UpdatePhase } from '../components/ui/UpdateModal';
+import Constants from 'expo-constants';
+import apiClient from '../lib/apiClient';
+import { Linking, Platform } from 'react-native';
 
 // ---------------------------------------------------------------------------
 // useOTAUpdates — Production OTA update lifecycle
@@ -20,6 +23,7 @@ interface OTAState {
   phase: UpdatePhase;
   progress: number;
   forceUpdate: boolean;
+  storeUrl?: string;
 }
 
 export function useOTAUpdates() {
@@ -38,6 +42,31 @@ export function useOTAUpdates() {
 
     const checkForUpdate = async () => {
       try {
+        // 1. Check Play Store Native Update Requirement
+        const versionResponse = await apiClient.get('/api/public/settings/app-version');
+        const config = versionResponse.data || versionResponse;
+        
+        const currentVersion = Constants.expoConfig?.version || '1.0.0';
+        const minVersion = config?.min_version || '1.0.0';
+
+        // Very basic semver compare (assuming x.y.z format)
+        const isOutdated = currentVersion.localeCompare(minVersion, undefined, { numeric: true, sensitivity: 'base' }) < 0;
+
+        if (isOutdated) {
+          Logger.info('Native Play Store update required', { currentVersion, minVersion });
+          if (!cancelled) {
+            setState({
+              visible: true,
+              phase: 'playstore' as any, // We will update UpdatePhase type
+              progress: 0,
+              forceUpdate: true, // Native updates are always forced if they are below min_version
+              storeUrl: config?.playstore_url || 'market://details?id=com.breathy.patient'
+            });
+            return; // Stop checking OTA
+          }
+        }
+
+        // 2. Check OTA
         const update = await Updates.checkForUpdateAsync();
 
         if (!cancelled && update.isAvailable) {
@@ -77,6 +106,13 @@ export function useOTAUpdates() {
 
   // ── Phase 2: Download the update ──
   const handleUpdate = useCallback(async () => {
+    if (state.phase === 'playstore') {
+       if (state.storeUrl) {
+         Linking.openURL(state.storeUrl).catch(err => console.error("Couldn't load page", err));
+       }
+       return;
+    }
+
     if (state.phase === 'ready') {
       // Already downloaded — restart immediately
       try {
@@ -133,6 +169,7 @@ export function useOTAUpdates() {
     updatePhase: state.phase,
     updateProgress: state.progress,
     isForceUpdate: state.forceUpdate,
+    storeUrl: state.storeUrl,
     onUpdate: handleUpdate,
     onDismiss: handleDismiss,
     onRetry: handleRetry,

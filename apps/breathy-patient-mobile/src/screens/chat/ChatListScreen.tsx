@@ -69,10 +69,18 @@ export default function ChatListScreen() {
       style={[styles.sessionItem, { borderBottomColor: c.border }]}
       onPress={() => navigation.navigate('ChatRoom', { sessionId: item.id, doctorName: item.doctors?.full_name })}
     >
-      <Image 
-        source={{ uri: item.doctors?.profile_photo_url || 'https://via.placeholder.com/50' }} 
-        style={styles.avatar} 
-      />
+      {item.doctors?.profile_photo_url ? (
+        <Image 
+          source={{ uri: item.doctors.profile_photo_url }} 
+          style={styles.avatar} 
+        />
+      ) : (
+        <View style={[styles.avatar, { backgroundColor: c.brandBg || '#e0f2f1', alignItems: 'center', justifyContent: 'center' }]}>
+          <Text style={{ color: c.brand, fontSize: 20, fontWeight: '700' }}>
+            {item.doctors?.full_name?.charAt(0)?.toUpperCase() || 'D'}
+          </Text>
+        </View>
+      )}
       <View style={styles.sessionInfo}>
         <Text style={[styles.doctorName, { color: c.text }]}>Dr. {item.doctors?.full_name}</Text>
         <Text style={[styles.lastUpdated, { color: c.textSecondary }]}>

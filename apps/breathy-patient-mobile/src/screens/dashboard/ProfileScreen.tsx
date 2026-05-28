@@ -7,8 +7,13 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   TextInput,
-  Alert,
+  Image,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
+import ErrorModal from '../../components/ui/ErrorModal';
+import SuccessModal from '../../components/ui/SuccessModal';
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +22,7 @@ import { useAuthStore } from '../../store/authStore';
 import {
   getPatientProfile,
   updatePatientProfile,
+  getAvatarUploadUrl,
 } from '../../services/patientService';
 
 // ---------------------------------------------------------------------------
@@ -48,6 +54,11 @@ export default function ProfileScreen() {
   const [gender, setGender] = useState('');
   const [bloodGroup, setBloodGroup] = useState('');
   const [city, setCity] = useState('');
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   useEffect(() => {
     loadProfile();
@@ -66,6 +77,7 @@ export default function ProfileScreen() {
       setGender(data.gender || '');
       setBloodGroup(data.blood_group || '');
       setCity(data.city || '');
+      setProfilePhotoUrl(data.profile_photo_url || null);
     } catch (err: any) {
       console.error('[ProfileScreen] Failed to load profile:', err.message);
       // Fall back to store data if API fails
@@ -77,6 +89,7 @@ export default function ProfileScreen() {
         setGender(storeProfile.gender || '');
         setBloodGroup(storeProfile.blood_group || '');
         setCity(storeProfile.city || '');
+        setProfilePhotoUrl(storeProfile.profile_photo_url || null);
       }
     } finally {
       setIsLoading(false);
@@ -85,7 +98,7 @@ export default function ProfileScreen() {
 
   const handleSave = async () => {
     if (!fullName.trim()) {
-      Alert.alert('Error', 'Full name is required.');
+      setErrorMessage('Full name is required.');
       return;
     }
 
@@ -99,33 +112,68 @@ export default function ProfileScreen() {
         gender: gender || undefined,
         blood_group: bloodGroup || undefined,
         city: city.trim() || undefined,
+        profile_photo_url: profilePhotoUrl || undefined,
       });
 
       // Refresh the global auth store so HomeScreen reflects changes immediately
       await fetchProfile();
       
-      Alert.alert('Success', 'Profile updated successfully!');
+      setSuccessMessage('Profile updated successfully!');
     } catch (err: any) {
       console.error('[ProfileScreen] Failed to update profile:', err.message);
-      Alert.alert('Error', err.message || 'Could not update profile.');
+      setErrorMessage(err.message || 'Could not update profile.');
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleLogout = () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: signOut,
+    setShowLogoutConfirm(true);
+  };
+
+  const handleAvatarUpload = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (result.canceled || !result.assets[0]) return;
+
+      setIsUploadingAvatar(true);
+      const asset = result.assets[0];
+      const fileExt = asset.uri.split('.').pop() || 'jpeg';
+      const fileName = `${Date.now()}.${fileExt}`;
+      const fileType = `image/${fileExt}`;
+
+      // Get pre-signed URL from backend
+      const uploadData: any = await getAvatarUploadUrl({
+        fileName,
+        fileType,
+      });
+
+      // Upload binary to Supabase Storage via pre-signed URL
+      const uploadResult = await FileSystem.uploadAsync(uploadData.signedUrl, asset.uri, {
+        httpMethod: 'PUT',
+        headers: {
+          'Content-Type': fileType,
         },
-      ]
-    );
+      });
+
+      if (uploadResult.status < 200 || uploadResult.status >= 300) {
+        throw new Error('Failed to upload image to storage');
+      }
+
+      // Set public URL in state
+      setProfilePhotoUrl(uploadData.profilePhotoUrl);
+    } catch (error: any) {
+      console.error('[ProfileScreen] Avatar upload error:', error);
+      setErrorMessage(error.message || 'Failed to upload avatar');
+    } finally {
+      setIsUploadingAvatar(false);
+    }
   };
 
   if (isLoading) {
@@ -145,13 +193,28 @@ export default function ProfileScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Avatar */}
         <View style={styles.avatarContainer}>
-          <View style={[styles.avatar, { backgroundColor: c.brandBg }]}>
-            <Text style={{ color: c.brand, fontSize: 32, fontWeight: '700' }}>
-              {fullName ? fullName.charAt(0).toUpperCase() : 'U'}
-            </Text>
-          </View>
-          <TouchableOpacity style={[styles.editAvatarButton, { backgroundColor: c.card, borderColor: c.border }]}>
-            <Ionicons name="camera" size={16} color={c.text} />
+          <TouchableOpacity onPress={handleAvatarUpload} disabled={isUploadingAvatar}>
+            <View>
+              {profilePhotoUrl ? (
+                <Image source={{ uri: profilePhotoUrl }} style={styles.avatar} />
+              ) : (
+                <View style={[styles.avatar, { backgroundColor: c.brandBg }]}>
+                  <Text style={{ color: c.brand, fontSize: 32, fontWeight: '700' }}>
+                    {fullName ? fullName.charAt(0).toUpperCase() : 'U'}
+                  </Text>
+                </View>
+              )}
+
+              {isUploadingAvatar && (
+                <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 40, justifyContent: 'center', alignItems: 'center' }]}>
+                  <ActivityIndicator color="#fff" />
+                </View>
+              )}
+
+              <View style={[styles.editAvatarButton, { backgroundColor: c.card, borderColor: c.border }]}>
+                <Ionicons name="camera" size={16} color={c.text} />
+              </View>
+            </View>
           </TouchableOpacity>
         </View>
 
@@ -282,6 +345,26 @@ export default function ProfileScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      <ErrorModal
+        visible={!!errorMessage}
+        message={errorMessage || ''}
+        onClose={() => setErrorMessage(null)}
+      />
+      <SuccessModal
+        visible={!!successMessage}
+        message={successMessage || ''}
+        onClose={() => setSuccessMessage(null)}
+      />
+      <ConfirmationModal
+        visible={showLogoutConfirm}
+        title="Sign Out"
+        message="Are you sure you want to sign out?"
+        confirmText="Sign Out"
+        isDestructive={true}
+        onCancel={() => setShowLogoutConfirm(false)}
+        onConfirm={() => { setShowLogoutConfirm(false); signOut(); }}
+      />
     </View>
   );
 }

@@ -20,12 +20,21 @@ import PrescriptionsScreen from '../screens/dashboard/PrescriptionsScreen';
 import AiAnalyzerScreen from '../screens/dashboard/AiAnalyzerScreen';
 import ClinicProfileScreen from '../screens/search/ClinicProfileScreen';
 import BookingSuccessScreen from '../screens/search/BookingSuccessScreen';
+import SectionWebViewScreen from '../screens/dashboard/SectionWebViewScreen';
+import TreatmentPlansScreen from '../screens/dashboard/TreatmentPlansScreen';
+import PdfViewerScreen from '../screens/dashboard/PdfViewerScreen';
+import CheckInScreen from '../screens/search/CheckInScreen';
+import FoodScannerScreen from '../screens/dashboard/FoodScannerScreen';
+import FoodDatabaseScreen from '../screens/dashboard/FoodDatabaseScreen';
+import ProgressScreen from '../screens/dashboard/ProgressScreen';
+import TaraScreen from '../screens/dashboard/TaraScreen';
 import { useOTAUpdates } from '../hooks/useOTAUpdates';
 import UpdateModal from '../components/ui/UpdateModal';
 
 import LanguageSelectionScreen from '../screens/auth/LanguageSelectionScreen';
 import WelcomeCarouselScreen from '../screens/auth/WelcomeCarouselScreen';
 import { useAppStore } from '../store/appStore';
+import { registerForPushNotificationsAsync } from '../hooks/usePushNotifications';
 
 const Stack = createNativeStackNavigator();
 
@@ -90,6 +99,9 @@ export default function RootNavigator() {
 
       if (isMounted) {
         setSession(session);
+        if (session) {
+          registerForPushNotificationsAsync();
+        }
       }
     });
 
@@ -147,9 +159,17 @@ export default function RootNavigator() {
             <Stack.Screen name="VideoRoom" component={VideoRoomScreen} />
             <Stack.Screen name="HealthRecords" component={HealthRecordsScreen} />
             <Stack.Screen name="Prescriptions" component={PrescriptionsScreen} />
+            <Stack.Screen name="TreatmentPlans" component={TreatmentPlansScreen} />
+            <Stack.Screen name="PdfViewer" component={PdfViewerScreen} />
             <Stack.Screen name="AiAnalyzer" component={AiAnalyzerScreen} />
             <Stack.Screen name="ClinicProfile" component={ClinicProfileScreen} />
             <Stack.Screen name="BookingSuccess" component={BookingSuccessScreen} />
+            <Stack.Screen name="SectionWebView" component={SectionWebViewScreen} />
+            <Stack.Screen name="CheckIn" component={CheckInScreen} />
+            <Stack.Screen name="FoodScanner" component={FoodScannerScreen} options={{ presentation: 'fullScreenModal' }} />
+            <Stack.Screen name="FoodDatabase" component={FoodDatabaseScreen} options={{ presentation: 'modal' }} />
+            <Stack.Screen name="Progress" component={ProgressScreen} />
+            <Stack.Screen name="TaraScreen" component={TaraScreen} />
           </Stack.Group>
         )}
       </Stack.Navigator>

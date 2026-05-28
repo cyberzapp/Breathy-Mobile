@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 const BRAND = '#22ae9e';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-export type UpdatePhase = 'idle' | 'available' | 'downloading' | 'ready' | 'error';
+export type UpdatePhase = 'idle' | 'available' | 'downloading' | 'ready' | 'error' | 'playstore';
 
 interface Props {
     visible: boolean;
@@ -82,6 +82,13 @@ export default function UpdateModal({
                     iconColor: '#f59e0b',
                     title: 'Update Available',
                     subtitle: 'A new version of the app is ready. Update now for the latest features and fixes.',
+                };
+            case 'playstore':
+                return {
+                    icon: 'logo-google-playstore' as const,
+                    iconColor: '#3b82f6',
+                    title: 'App Update Required',
+                    subtitle: 'This version of the app is no longer supported. Please download the latest version from the Play Store.',
                 };
             case 'downloading':
                 return {
@@ -165,6 +172,16 @@ export default function UpdateModal({
                                             <Text style={styles.secondaryBtnText}>Not Now</Text>
                                         </TouchableOpacity>
                                     )}
+                                </>
+                            )}
+
+                            {phase === 'playstore' && (
+                                <>
+                                    <TouchableOpacity style={styles.primaryBtn} onPress={onUpdate} activeOpacity={0.8}>
+                                        <Ionicons name="logo-google-playstore" size={18} color="#fff" />
+                                        <Text style={styles.primaryBtnText}>Update in Play Store</Text>
+                                    </TouchableOpacity>
+                                    {/* Play Store updates are always forced for now */}
                                 </>
                             )}
 

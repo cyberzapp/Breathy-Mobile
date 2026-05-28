@@ -6,13 +6,11 @@ module.exports = {
     orientation: 'default',
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',
-    newArchEnabled: true,
     splash: {
       image: './assets/splash-icon.png',
       resizeMode: 'contain',
       backgroundColor: '#22ae9e',
     },
-    jsEngine: 'hermes',
     assetBundlePatterns: ['**/*'],
     updates: {
       url: 'https://u.expo.dev/0c64e6f4-07ea-4bd6-aa3a-d907d32235fd'
@@ -32,10 +30,6 @@ module.exports = {
       },
     },
     android: {
-      notification: {
-        icon: './assets/notification-icon.png',
-        color: '#22ae9e',
-      },
       adaptiveIcon: {
         foregroundImage: './assets/adaptive-icon.png',
         backgroundColor: '#22ae9e',
@@ -47,6 +41,7 @@ module.exports = {
         'android.permission.CAMERA',
         'android.permission.RECORD_AUDIO',
         'android.permission.MODIFY_AUDIO_SETTINGS',
+        'android.permission.POST_NOTIFICATIONS',
       ],
       softwareKeyboardLayoutMode: 'resize',
     },
@@ -71,18 +66,25 @@ module.exports = {
         },
       ],
       'expo-secure-store',
+      'expo-localization',
       [
         'expo-build-properties',
         {
           android: {
+            newArchEnabled: true,
             enableProguardInReleaseBuilds: true,
             packagingOptions: {
               pickFirst: ['lib/**/libc++_shared.so', 'lib/**/libjsc.so'],
             },
           },
+          ios: {
+            newArchEnabled: true,
+          },
         },
       ],
       '@react-native-community/datetimepicker',
+      'expo-font',
+      'expo-sharing'
     ],
     extra: {
       eas: {

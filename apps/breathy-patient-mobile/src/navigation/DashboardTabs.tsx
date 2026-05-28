@@ -15,10 +15,8 @@ import {
 import HomeScreen from '../screens/dashboard/HomeScreen';
 import SearchScreen from '../screens/dashboard/SearchScreen';
 import ProfileScreen from '../screens/dashboard/ProfileScreen';
-
-// Temp mock screens
-const TrackScreen = () => <View style={{ flex: 1, backgroundColor: '#fff' }} />;
-const AiAnalyzerPlaceholder = () => <View style={{ flex: 1, backgroundColor: '#fff' }} />;
+import TrackerScreen from '../screens/dashboard/TrackerScreen';
+import TaraScreen from '../screens/dashboard/TaraScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -48,8 +46,8 @@ export default function DashboardTabs() {
           backgroundColor: '#ffffff',
           borderTopWidth: 1,
           borderTopColor: 'rgba(34,174,158,0.2)',
-          height: 65 + (Platform.OS === 'ios' ? insets.bottom : 0),
-          paddingBottom: Platform.OS === 'ios' ? insets.bottom : 8,
+          height: 65 + insets.bottom,
+          paddingBottom: insets.bottom || 8,
           paddingTop: 8,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: -4 },
@@ -59,7 +57,7 @@ export default function DashboardTabs() {
         },
         tabBarShowLabel: true,
         tabBarActiveTintColor: '#22ae9e',
-        tabBarInactiveTintColor: 'rgba(34,174,158,0.5)',
+        tabBarInactiveTintColor: 'rgba(128, 128, 128,0.8)',
         tabBarLabelStyle: {
           fontSize: 10,
           fontWeight: '700',
@@ -79,9 +77,10 @@ export default function DashboardTabs() {
         }}
       />
       <Tab.Screen
-        name="Consult"
+        name="Search"
         component={SearchScreen}
         options={{
+          tabBarLabel: 'Consult',
           tabBarIcon: ({ color, focused }) => (
             <View style={[styles.iconWrapper, focused && styles.iconWrapperActive]}>
               <Stethoscope size={22} color={color} />
@@ -91,8 +90,15 @@ export default function DashboardTabs() {
       />
       <Tab.Screen
         name="Tara AI"
-        component={AiAnalyzerPlaceholder}
+        component={View} // Dummy component, we intercept the press
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            e.preventDefault();
+            navigation.navigate('TaraScreen');
+          },
+        })}
         options={{
+          tabBarHideOnKeyboard: true,
           tabBarLabel: () => (
             <Text style={styles.taraLabel}>Tara AI</Text>
           ),
@@ -111,7 +117,7 @@ export default function DashboardTabs() {
       />
       <Tab.Screen
         name="Track"
-        component={TrackScreen}
+        component={TrackerScreen}
         options={{
           tabBarIcon: ({ color, focused }) => (
             <View style={[styles.iconWrapper, focused && styles.iconWrapperActive]}>

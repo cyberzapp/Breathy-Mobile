@@ -1,5 +1,5 @@
-import React, { useRef, useEffect } from 'react';
-import { useIsFocused } from '@react-navigation/native';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { useIsFocused, useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -8,7 +8,8 @@ import {
   StyleSheet,
   Dimensions,
   Platform,
-  Image
+  Image,
+  Share
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -26,14 +27,19 @@ import {
   Stethoscope, Sparkles, ChevronRight, Clock, Award, Gift, Share2, Flame, Newspaper
 } from 'lucide-react-native';
 import { useAuthStore } from '../../store/authStore';
+import { getTrendingSpecialties } from '../../services/patientService';
+import { getRecentDoctors, RecentDoctor } from '../../utils/recentDoctorsStore';
 import OnboardingModal from '../../components/dashboard/OnboardingModal';
+import LocationSelectorModal from '../../components/dashboard/LocationSelectorModal';
+import QRScannerModal from '../../components/dashboard/QRScannerModal';
+import VoiceSearchModal from '../../components/dashboard/VoiceSearchModal';
 
 const { width } = Dimensions.get('window');
 
 // Utility Components
-function UtilityItem({ icon, label }: { icon: React.ReactNode, label: string }) {
+function UtilityItem({ icon, label, onPress }: { icon: React.ReactNode, label: string, onPress?: () => void }) {
   return (
-    <TouchableOpacity style={styles.utilityItem} activeOpacity={0.7}>
+    <TouchableOpacity style={styles.utilityItem} activeOpacity={0.7} onPress={onPress}>
       <View style={styles.utilityIconWrapper}>
         {icon}
       </View>
@@ -42,10 +48,10 @@ function UtilityItem({ icon, label }: { icon: React.ReactNode, label: string }) 
   );
 }
 
-function SpecialtyCard({ label, tag, type }: { label: string, tag: string, type: 'hot' | 'pop' }) {
+function SpecialtyCard({ label, tag, type, onPress }: { label: string, tag: string, type: 'hot' | 'pop', onPress?: () => void }) {
   const isHot = type === 'hot';
   return (
-    <TouchableOpacity style={styles.specialtyCard} activeOpacity={0.7}>
+    <TouchableOpacity style={styles.specialtyCard} activeOpacity={0.7} onPress={onPress}>
       <View style={styles.specialtyTag}>
         {isHot ? <Flame size={10} color="#ffffff" /> : <Sparkles size={10} color="#ffffff" />}
         <Text style={styles.specialtyTagText}>{tag}</Text>
@@ -55,20 +61,23 @@ function SpecialtyCard({ label, tag, type }: { label: string, tag: string, type:
   );
 }
 
-const SearchBarContent = ({ navigation }: { navigation: any }) => (
+const SearchBarContent = ({ navigation, onMicPress, onScanPress, isListening }: { navigation: any; onMicPress?: () => void; onScanPress?: () => void; isListening?: boolean }) => (
   <View style={styles.searchInputWrapper}>
     <Search size={22} color="#22ae9e" style={{ marginLeft: 12 }} />
-    <TextInput
-      style={styles.searchInput}
-      placeholder="Search doctors, symptoms..."
-      placeholderTextColor="rgba(34,174,158,0.5)"
-      onFocus={() => navigation.navigate('Search')}
-    />
+    <TouchableOpacity
+      activeOpacity={1}
+      onPress={() => navigation.navigate('Search')}
+      style={[styles.searchInput, { flex: 1, justifyContent: 'center' }]}
+    >
+      <Text style={{ color: 'rgba(34,174,158,0.5)', fontSize: 16 }}>
+        Search doctors...
+      </Text>
+    </TouchableOpacity>
     <View style={styles.searchRightIcons}>
-      <TouchableOpacity>
+      <TouchableOpacity onPress={onMicPress}>
         <Mic size={20} color="rgba(34,174,158,0.6)" />
       </TouchableOpacity>
-      <TouchableOpacity style={styles.scanButton}>
+      <TouchableOpacity style={styles.scanButton} onPress={onScanPress}>
         <Scan size={20} color="#22ae9e" />
       </TouchableOpacity>
     </View>
@@ -80,6 +89,13 @@ export default function HomeScreen({ navigation }: any) {
   const profile = useAuthStore((state) => state.profile);
   const needsOnboarding = useAuthStore((state) => state.needsOnboarding);
   const insets = useSafeAreaInsets();
+
+  const [specialties, setSpecialties] = useState<any[]>([]);
+  const [recentDoctors, setRecentDoctors] = useState<RecentDoctor[]>([]);
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [showQRScanner, setShowQRScanner] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<{ label: string; address: string } | null>(null);
+  const [isListening, setIsListening] = useState(false);
 
   const lottieRef = useRef<LottieView>(null);
   const isFocused = useIsFocused();
@@ -110,6 +126,28 @@ export default function HomeScreen({ navigation }: any) {
     };
   }, [isFocused]);
 
+  useEffect(() => {
+    (async () => {
+      try {
+        const specs: any = await getTrendingSpecialties();
+        setSpecialties(Array.isArray(specs) ? specs : (specs?.data || []));
+      } catch (err) {
+        console.warn('Failed to load specialties', err);
+      }
+    })();
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+      (async () => {
+        const recent = await getRecentDoctors();
+        if (isActive) setRecentDoctors(recent);
+      })();
+      return () => { isActive = false; };
+    }, [])
+  );
+
   // Scroll animation
   const scrollY = useSharedValue(0);
   const scrollHandler = useAnimatedScrollHandler({
@@ -136,15 +174,89 @@ export default function HomeScreen({ navigation }: any) {
       Extrapolation.CLAMP
     );
 
+    const zIndex = interpolate(
+      scrollY.value,
+      [STICKY_THRESHOLD, STICKY_THRESHOLD + 20],
+      [-1, 50],
+      Extrapolation.CLAMP
+    );
+
     return {
       opacity,
       transform: [{ translateY }],
       paddingTop: insets.top + 8,
+      zIndex,
     };
   });
 
+  // Voice search handler
+  const handleMicPress = async () => {
+    try {
+      const ExpoSpeechRecognition = require('expo-speech-recognition');
+      const { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } = ExpoSpeechRecognition;
+
+      // Request permissions
+      const result = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+      if (!result.granted) return;
+
+      // Start listening
+      ExpoSpeechRecognitionModule.start({
+        lang: 'en-IN',
+        interimResults: false,
+        maxAlternatives: 1,
+      });
+
+      setIsListening(true);
+
+      // Listen for result
+      ExpoSpeechRecognitionModule.addListener('result', (event: any) => {
+        if (event.isFinal && event.results?.[0]?.transcript) {
+          const text = event.results[0].transcript;
+          setIsListening(false);
+          ExpoSpeechRecognitionModule.stop();
+          navigation.navigate('Search', { initialQuery: text });
+        }
+      });
+
+      ExpoSpeechRecognitionModule.addListener('end', () => {
+        setIsListening(false);
+      });
+
+      ExpoSpeechRecognitionModule.addListener('error', () => {
+        setIsListening(false);
+      });
+
+      // Auto-stop after 5 seconds
+      setTimeout(() => {
+        try { ExpoSpeechRecognitionModule.stop(); } catch { }
+        setIsListening(false);
+      }, 5000);
+    } catch (e) {
+      console.warn('Speech recognition not available:', e);
+      setIsListening(false);
+    }
+  };
+
+  // QR Scanner handler
+  const handleQRScanned = (data: string) => {
+    setShowQRScanner(false);
+    // Parse breathy.in/check-in/{clinicId}?doctorId={doctorId}
+    try {
+      const url = new URL(data);
+      const pathParts = url.pathname.split('/').filter(Boolean);
+      if (pathParts[0] === 'check-in' && pathParts[1]) {
+        const clinicId = pathParts[1];
+        const doctorId = url.searchParams.get('doctorId') || undefined;
+        navigation.navigate('CheckIn', { clinicId, doctorId });
+        return;
+      }
+    } catch { }
+    // Fallback: try opening as a doctor profile
+    navigation.navigate('Search', { initialQuery: data });
+  };
+
   return (
-    <View 
+    <View
       style={styles.container}
       onTouchStart={pauseAnimation}
       onTouchEnd={resumeAnimation}
@@ -153,7 +265,7 @@ export default function HomeScreen({ navigation }: any) {
 
       {/* Sticky Search Header (Fades in when scrolled) */}
       <Animated.View style={[styles.stickySearchContainer, stickyBarStyle]} pointerEvents="box-none">
-        <SearchBarContent navigation={navigation} />
+        <SearchBarContent navigation={navigation} onMicPress={handleMicPress} onScanPress={() => setShowQRScanner(true)} isListening={isListening} />
       </Animated.View>
 
       <Animated.ScrollView
@@ -174,21 +286,30 @@ export default function HomeScreen({ navigation }: any) {
           style={[styles.heroSection, { paddingTop: insets.top + 16 }]}
         >
           <View style={styles.heroTopRow}>
-            <View style={styles.locationWrapper}>
+            <TouchableOpacity style={styles.locationWrapper} onPress={() => setShowLocationModal(true)} activeOpacity={0.7}>
               <MapPin size={20} color="rgba(255,255,255,0.8)" />
               <View style={styles.locationTexts}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Text style={styles.homeText}>Home</Text>
+                  <Text style={styles.homeText}>{selectedLocation?.label || 'Home'}</Text>
                   <ChevronDown size={18} color="rgba(255,255,255,0.8)" style={{ marginLeft: 4 }} />
                 </View>
-                <Text style={styles.addressText} numberOfLines={1}>Noyakhali Colony, Palashi...</Text>
+                <Text style={styles.addressText} numberOfLines={1}>{selectedLocation?.address || 'Tap to set location...'}</Text>
               </View>
-            </View>
+            </TouchableOpacity>
             <TouchableOpacity
               style={styles.profileIcon}
-              onPress={() => navigation.navigate('Profile')}
+              onPress={() => navigation.navigate('More')}
             >
-              <User size={20} color="#ffffff" />
+              {profile?.profile_photo_url ? (
+                <Image
+                  source={{ uri: profile.profile_photo_url }}
+                  style={{ width: 38, height: 38, borderRadius: 19 }}
+                />
+              ) : (
+                <Text style={{ color: '#ffffff', fontSize: 18, fontWeight: '700' }}>
+                  {(profile?.full_name || 'U').charAt(0).toUpperCase()}
+                </Text>
+              )}
             </TouchableOpacity>
           </View>
 
@@ -206,7 +327,7 @@ export default function HomeScreen({ navigation }: any) {
         <View style={styles.mainContent}>
           {/* In-Flow Search Bar */}
           <View style={styles.inFlowSearchContainer}>
-            <SearchBarContent navigation={navigation} />
+            <SearchBarContent navigation={navigation} onMicPress={handleMicPress} onScanPress={() => setShowQRScanner(true)} isListening={isListening} />
           </View>
 
           {/* Tara AI Card */}
@@ -225,10 +346,10 @@ export default function HomeScreen({ navigation }: any) {
                     <Image source={require('../../../assets/lady_doctor_icon.png')} style={{ width: 16, height: 16, borderRadius: 8, marginRight: 4 }} />
                     <Text style={styles.taraLabelText}>TARA AI</Text>
                   </View>
-                  <Text style={styles.taraTitle}>Your Personal Doctor</Text>
+                  <Text style={styles.taraTitle}>Your Personal Mentor</Text>
                   <Text style={styles.taraSubtitle}>Available 24/7 for instant consultations</Text>
                 </View>
-                <TouchableOpacity style={styles.taraChatBtn}>
+                <TouchableOpacity style={styles.taraChatBtn} onPress={() => navigation.navigate('TaraScreen')}>
                   <Text style={styles.taraChatText}>Chat</Text>
                   <ChevronRight size={16} color="#22ae9e" />
                 </TouchableOpacity>
@@ -251,10 +372,14 @@ export default function HomeScreen({ navigation }: any) {
               </View>
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.actionCard, { backgroundColor: '#22ae9e', alignItems: 'center', justifyContent: 'center' }]} activeOpacity={0.8}>
+            <TouchableOpacity
+              style={[styles.actionCard, { backgroundColor: '#22ae9e', alignItems: 'center', justifyContent: 'center' }]}
+              activeOpacity={0.8}
+              onPress={() => setShowQRScanner(true)}
+            >
               <LottieView
                 ref={lottieRef}
-                source={require('../../../assets/Scanner.json')}
+                source={require('../../../assets/animations/Scanner.json')}
                 loop
                 style={{ position: 'absolute', width: 180, height: 180, opacity: 0.2 }}
                 resizeMode="contain"
@@ -266,41 +391,59 @@ export default function HomeScreen({ navigation }: any) {
 
           {/* Utility Grid */}
           <View style={styles.utilityGrid}>
-            <UtilityItem icon={<FileSearch size={20} color="#22ae9e" />} label="AI Report" />
-            <UtilityItem icon={<Shield size={20} color="#22ae9e" />} label="Vault" />
-            <UtilityItem icon={<Calendar size={20} color="#22ae9e" />} label="Visits" />
-            <UtilityItem icon={<Newspaper size={20} color="#22ae9e" />} label="Feed" />
+            <UtilityItem icon={<FileSearch size={20} color="#22ae9e" />} label="AI Report" onPress={() => navigation.navigate('AiAnalyzer')} />
+            <UtilityItem icon={<Shield size={20} color="#22ae9e" />} label="Vault" onPress={() => navigation.navigate('HealthRecords')} />
+            <UtilityItem icon={<Calendar size={20} color="#22ae9e" />} label="Visits" onPress={() => navigation.navigate('Connect')} />
+            <UtilityItem icon={<Newspaper size={20} color="#22ae9e" />} label="Feed" onPress={() => navigation.navigate('SectionWebView', { title: 'Feed', path: '/blog' })} />
           </View>
 
           {/* Recent Activities */}
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>RECENT ACTIVITIES</Text>
-          </View>
-          <View style={styles.recentActivityCard}>
-            <View style={styles.recentActivityLeft}>
-              <View style={styles.recentActivityIcon}>
-                <Clock size={20} color="#22ae9e" />
+          {recentDoctors.length > 0 && (
+            <>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>RECENT ACTIVITIES</Text>
               </View>
-              <View>
-                <Text style={styles.recentDoctorName}>Dr. Sarah Jenkins</Text>
-                <Text style={styles.recentDoctorDetails}>Dermatologist • 12 Oct, 10:00 AM</Text>
-              </View>
-            </View>
-            <TouchableOpacity style={styles.rebookBtn}>
-              <Text style={styles.rebookText}>Rebook</Text>
-            </TouchableOpacity>
-          </View>
+              {(Array.isArray(recentDoctors) ? recentDoctors : []).map((doc, idx) => {
+                const dateOptions: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' };
+                const timeStr = new Date(doc.viewedAt).toLocaleDateString(undefined, dateOptions);
+                return (
+                  <View key={`${doc.id}-${idx}`} style={styles.recentActivityCard}>
+                    <View style={styles.recentActivityLeft}>
+                      <View style={styles.recentActivityIcon}>
+                        <Clock size={20} color="#22ae9e" />
+                      </View>
+                      <View>
+                        <Text style={styles.recentDoctorName}>{doc.name}</Text>
+                        <Text style={styles.recentDoctorDetails}>{doc.specialty} • Viewed {timeStr}</Text>
+                      </View>
+                    </View>
+                    <TouchableOpacity style={styles.rebookBtn} onPress={() => navigation.navigate('DoctorProfile', { doctorId: doc.id })}>
+                      <Text style={styles.rebookText}>View</Text>
+                    </TouchableOpacity>
+                  </View>
+                );
+              })}
+            </>
+          )}
 
           {/* Find by Specialty */}
           <View style={styles.specialtySection}>
             <Text style={styles.specialtyHeaderTitle}>Find by Specialty</Text>
             <View style={styles.specialtyGrid}>
-              <SpecialtyCard label="Gynecologist" tag="Trending" type="hot" />
-              <SpecialtyCard label="Homoeopath" tag="Trending" type="hot" />
-              <SpecialtyCard label="Cardiology" tag="Popular" type="pop" />
-              <SpecialtyCard label="General Medicine" tag="Popular" type="pop" />
+              {(Array.isArray(specialties) ? specialties : []).slice(0, 6).map((spec, index) => {
+                const isHot = index === 0 || index === 1;
+                return (
+                  <SpecialtyCard
+                    key={spec.id || spec.name}
+                    label={spec.name}
+                    tag={isHot ? 'Trending' : 'Popular'}
+                    type={isHot ? 'hot' : 'pop'}
+                    onPress={() => navigation.navigate('Search', { initialQuery: spec.name })}
+                  />
+                );
+              })}
             </View>
-            <TouchableOpacity style={styles.viewAllBtn}>
+            <TouchableOpacity style={styles.viewAllBtn} onPress={() => navigation.navigate('Search')}>
               <Text style={styles.viewAllText}>View All Specialties</Text>
               <ChevronRight size={16} color="#22ae9e" style={{ marginLeft: 4 }} />
             </TouchableOpacity>
@@ -308,7 +451,7 @@ export default function HomeScreen({ navigation }: any) {
 
           {/* Footer Modules */}
           <View style={styles.footerSection}>
-            <TouchableOpacity style={styles.privacyBtn}>
+            <TouchableOpacity style={styles.privacyBtn} onPress={() => navigation.navigate('SectionWebView', { title: 'Privacy Policy', path: '/rules' })}>
               <Shield size={18} color="rgba(34,174,158,0.7)" style={{ marginRight: 8 }} />
               <Text style={styles.privacyText}>Check our Privacy Policies</Text>
             </TouchableOpacity>
@@ -346,9 +489,12 @@ export default function HomeScreen({ navigation }: any) {
                 </View>
 
                 <Text style={styles.trustTitle}>Refer & Earn ₹500</Text>
-                <Text style={[styles.trustSubtitle, { marginBottom: 20 }]}>Invite friends and unlock premium rewards</Text>
+                <Text style={[styles.trustSubtitle, { marginBottom: 20 }]}>Unlock exclusive cashbacks and premium rewards</Text>
 
-                <TouchableOpacity style={styles.shareBtn}>
+                <TouchableOpacity
+                  style={styles.shareBtn}
+                  onPress={() => Share.share({ message: 'Unlock ₹500 cashback! Join me on Breathy, India\'s leading health platform. Skip the clinic queues and consult top doctors instantly. Download now: https://play.google.com/store/apps/details?id=com.breathy.patient' })}
+                >
                   <Share2 size={16} color="#ffffff" style={{ marginRight: 8 }} />
                   <Text style={styles.shareBtnText}>Share with Friends</Text>
                 </TouchableOpacity>
@@ -358,6 +504,32 @@ export default function HomeScreen({ navigation }: any) {
 
         </View>
       </Animated.ScrollView>
+
+      <LocationSelectorModal
+        visible={showLocationModal}
+        onClose={() => setShowLocationModal(false)}
+        onSelect={(location) => {
+          setSelectedLocation(location);
+          setShowLocationModal(false);
+        }}
+      />
+
+      <QRScannerModal
+        visible={showQRScanner}
+        onClose={() => setShowQRScanner(false)}
+        onScanned={handleQRScanned}
+      />
+      {/* Voice Search Feedback Modal */}
+      <VoiceSearchModal
+        visible={isListening}
+        onClose={() => {
+          setIsListening(false);
+          try {
+            const ExpoSpeechRecognition = require('expo-speech-recognition');
+            ExpoSpeechRecognition.ExpoSpeechRecognitionModule.stop();
+          } catch (e) { }
+        }}
+      />
     </View>
   );
 }
@@ -560,7 +732,7 @@ const styles = StyleSheet.create({
   },
   taraTitle: {
     color: '#ffffff',
-    fontSize: 20,
+    fontSize: 19.5,
     fontWeight: '700',
   },
   taraSubtitle: {

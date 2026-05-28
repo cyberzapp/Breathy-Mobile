@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/authStore';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -34,7 +35,7 @@ export default function SectionWebViewScreen() {
   const [isWebViewLoading, setIsWebViewLoading] = useState(true);
   const session = useAuthStore((s) => s.session);
   const c = useColors();
-
+  const insets = useSafeAreaInsets();
   const fullUrl = `${PATIENT_WEB_URL}${path}`;
 
   useEffect(() => {
@@ -87,7 +88,11 @@ export default function SectionWebViewScreen() {
           // 5. Visual polish: Hide web-specific navigation
           var style = document.createElement('style');
           style.innerHTML = 'nav, header, footer, .MuiDrawer-root, [class*="Header"], [class*="Footer"], #web-nav { display: none !important; } body { padding-top: 0 !important; }';
-          document.head.appendChild(style);
+          if (document.head) {
+            document.head.appendChild(style);
+          } else {
+            document.documentElement.appendChild(style);
+          }
         } catch(e) {
           window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'AUTH_ERROR', error: e.message }));
         }
@@ -110,7 +115,7 @@ export default function SectionWebViewScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: c.bg }]}>
+    <View style={[styles.container, { backgroundColor: c.bg, paddingTop: insets.top }]}>
       <View style={[styles.header, { backgroundColor: c.card, borderBottomColor: c.border }]}>
         <TouchableOpacity
           style={[styles.backButton, { backgroundColor: c.cardAlt }]}

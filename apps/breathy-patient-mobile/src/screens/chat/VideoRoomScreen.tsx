@@ -1,16 +1,21 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
+  Animated,
+  PanResponder,
+  Dimensions,
 } from 'react-native';
+import ErrorModal from '../../components/ui/ErrorModal';
+import NotificationModal from '../../components/ui/NotificationModal';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useColors } from '../../hooks/useColors';
+import { getDailyVideoToken } from '../../services/patientService';
 
 // ⚠️ IMPORTANT: Do NOT import @daily-co/react-native-daily-js at the top level!
 // The Daily.co SDK eagerly initializes WebRTC native modules on import.
@@ -25,7 +30,7 @@ export default function VideoRoomScreen() {
   const navigation = useNavigation<any>();
   const c = useColors();
 
-  const { url, token, doctorName } = route.params || {};
+  const { appointmentId, doctorName } = route.params || {};
 
   const [callObject, setCallObject] = useState<any>(null);
   const [isConnecting, setIsConnecting] = useState(true);
@@ -36,10 +41,64 @@ export default function VideoRoomScreen() {
   const [localParticipant, setLocalParticipant] = useState<any>(null);
   const [remoteParticipant, setRemoteParticipant] = useState<any>(null);
   const [DailyMediaViewComponent, setDailyMediaViewComponent] = useState<any>(null);
+  const [errorModalMsg, setErrorModalMsg] = useState<string | null>(null);
+  const [noticeMsg, setNoticeMsg] = useState<string | null>(null);
+
+  // --- PiP Drag Setup ---
+  const pan = useRef(new Animated.ValueXY()).current;
+  const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+
+  // PiP dimensions (from styles.localContainer)
+  const pipWidth = 100;
+  const pipHeight = 150;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        pan.setOffset({
+          x: (pan.x as any)._value,
+          y: (pan.y as any)._value
+        });
+        pan.setValue({ x: 0, y: 0 });
+      },
+      onPanResponderMove: Animated.event(
+        [null, { dx: pan.x, dy: pan.y }],
+        { useNativeDriver: false }
+      ),
+      onPanResponderRelease: () => {
+        pan.flattenOffset();
+        
+        let newX = (pan.x as any)._value;
+        let newY = (pan.y as any)._value;
+
+        // Snapping boundaries calculation
+        // Initial position is top: 60, right: 24 (which maps to x=0, y=0)
+        // Move left goes negative X. Min X is when the left edge hits the screen left edge (with some padding)
+        const minX = -(screenWidth - pipWidth - 48); // 24px padding on both sides
+        const maxX = 0; // The right edge cannot go past the initial right: 24
+        
+        const minY = -40; // The top edge cannot go past top: 20
+        const maxY = screenHeight - pipHeight - 60 - 150; // The bottom edge leaves room for controls
+
+        if (newX < minX) newX = minX;
+        if (newX > maxX) newX = maxX;
+        if (newY < minY) newY = minY;
+        if (newY > maxY) newY = maxY;
+
+        Animated.spring(pan, {
+          toValue: { x: newX, y: newY },
+          useNativeDriver: false,
+          friction: 6,
+          tension: 40,
+        }).start();
+      }
+    })
+  ).current;
 
   useEffect(() => {
-    if (!url) {
-      Alert.alert('Error', 'No video URL provided.');
+    if (!appointmentId) {
+      setErrorModalMsg('No appointment ID provided.');
       navigation.goBack();
       return;
     }
@@ -49,11 +108,15 @@ export default function VideoRoomScreen() {
     return () => {
       leaveCall();
     };
-  }, [url]);
+  }, [appointmentId]);
 
   const initDailyCall = async () => {
     try {
-      // Lazy-load Daily.co SDK — this is the key fix!
+      // Fetch the token and room URL from the backend
+      const response: any = await getDailyVideoToken(appointmentId);
+      const { roomUrl, token } = response;
+
+      // Lazy-load Daily.co SDK
       console.log('[VideoRoom] Lazy-loading Daily.co SDK...');
       const DailyModule = require('@daily-co/react-native-daily-js');
       const Daily = DailyModule.default || DailyModule;
@@ -64,56 +127,65 @@ export default function VideoRoomScreen() {
       const co = Daily.createCallObject();
       setCallObject(co);
 
+      // Setup Auto-Disconnect Logic (5 minutes if doctor doesn't join)
+      let noShowTimeout: any;
+      const handleParticipantCount = () => {
+        if (noShowTimeout) clearTimeout(noShowTimeout);
+        const pCount = Object.keys(co.participants()).length;
+        if (pCount <= 1) {
+          noShowTimeout = setTimeout(() => {
+            setNoticeMsg("The doctor did not join the call in time. Ending automatically.");
+          }, 5 * 60 * 1000);
+        }
+      };
+
+      const updateParticipantsList = () => {
+        const participants = co.participants();
+        const pList = Object.values(participants);
+        const local = pList.find((p: any) => p.local);
+        const remote = pList.find((p: any) => !p.local);
+
+        setLocalParticipant(local || null);
+        setRemoteParticipant(remote || null);
+      };
+
       // Event Listeners
-      co.on('joined-meeting', handleJoinedMeeting);
-      co.on('participant-joined', handleParticipantUpdate);
-      co.on('participant-updated', handleParticipantUpdate);
-      co.on('participant-left', handleParticipantLeft);
-      co.on('error', handleError);
+      co.on('joined-meeting', () => {
+        setIsConnecting(false);
+        updateParticipantsList();
+        handleParticipantCount();
+      });
+      
+      co.on('participant-joined', () => {
+        updateParticipantsList();
+        handleParticipantCount();
+      });
+      
+      co.on('participant-updated', updateParticipantsList);
+      
+      co.on('participant-left', (e: any) => {
+        updateParticipantsList();
+        handleParticipantCount();
+        if (e.participant && !e.participant.local) {
+          setNoticeMsg('The doctor has left the meeting.');
+        }
+      });
+      
+      co.on('error', (e: any) => {
+        console.error('[VideoRoom] Daily.co Error:', e);
+        setErrorModalMsg(e?.errorMsg || 'An unknown error occurred.');
+      });
 
       // Join the call
-      await co.join({ url, token });
+      await co.join({ url: roomUrl, token });
     } catch (err: any) {
       console.error('[VideoRoom] Failed to initialize Daily call:', err?.message || err);
       setIsConnecting(false);
       setLoadError(err?.message || 'Could not join the video call.');
-      Alert.alert(
-        'Video Call Error',
+      setErrorModalMsg(
         'Could not initialize the video call. This feature requires a native build (not Expo Go).\n\n' + (err?.message || '')
       );
     }
-  };
-
-  const handleJoinedMeeting = (e: any) => {
-    setIsConnecting(false);
-    updateParticipants(e.participants);
-  };
-
-  const handleParticipantUpdate = (e: any) => {
-    if (!callObject) return;
-    updateParticipants(callObject.participants());
-  };
-
-  const handleParticipantLeft = (e: any) => {
-    if (!callObject) return;
-    updateParticipants(callObject.participants());
-    if (e.participant.session_id === remoteParticipant?.session_id) {
-      Alert.alert('Doctor left', 'The doctor has left the meeting.');
-    }
-  };
-
-  const handleError = (e: any) => {
-    console.error('[VideoRoom] Daily.co Error:', e);
-    Alert.alert('Video Error', e?.errorMsg || 'An unknown error occurred.');
-  };
-
-  const updateParticipants = (participants: Record<string, any>) => {
-    const pList = Object.values(participants);
-    const local = pList.find((p: any) => p.local);
-    const remote = pList.find((p: any) => !p.local);
-
-    setLocalParticipant(local || null);
-    setRemoteParticipant(remote || null);
   };
 
   const leaveCall = useCallback(async () => {
@@ -171,22 +243,32 @@ export default function VideoRoomScreen() {
       <View style={styles.remoteContainer}>
         {remoteParticipant?.videoTrack && DailyMediaViewComponent ? (
           <DailyMediaViewComponent
-            videoTrack={remoteParticipant.videoTrack}
-            audioTrack={remoteParticipant.audioTrack}
+            videoTrack={remoteParticipant.videoTrack || null}
+            audioTrack={remoteParticipant.audioTrack || null}
             style={StyleSheet.absoluteFillObject}
             objectFit="cover"
           />
         ) : (
           <View style={styles.center}>
-            <Ionicons name="people" size={48} color="#475569" />
-            <Text style={{ color: '#94a3b8', marginTop: 12 }}>Waiting for Dr. {doctorName || 'Doctor'} to join...</Text>
+            <View style={styles.pulseCircle}>
+              <Ionicons name="people" size={48} color={c.brand} />
+            </View>
+            <Text style={{ color: '#f1f5f9', marginTop: 16, fontSize: 18, fontWeight: '600' }}>
+              Waiting for Dr. {doctorName || 'Doctor'}...
+            </Text>
+            <Text style={{ color: '#94a3b8', marginTop: 8, textAlign: 'center', paddingHorizontal: 32 }}>
+              They will join this secure room shortly.
+            </Text>
           </View>
         )}
       </View>
 
       {/* Local Video (Patient) */}
       {localParticipant?.videoTrack && cameraOn && DailyMediaViewComponent && (
-        <View style={styles.localContainer}>
+        <Animated.View 
+          style={[styles.localContainer, { transform: pan.getTranslateTransform() }]} 
+          {...panResponder.panHandlers}
+        >
           <DailyMediaViewComponent
             videoTrack={localParticipant.videoTrack}
             audioTrack={localParticipant.audioTrack || null}
@@ -194,32 +276,46 @@ export default function VideoRoomScreen() {
             objectFit="cover"
             mirror={true}
           />
-        </View>
+        </Animated.View>
       )}
 
       {/* Controls */}
-      <View style={styles.controlsContainer}>
-        <TouchableOpacity 
-          style={[styles.controlButton, { backgroundColor: micOn ? 'rgba(255,255,255,0.2)' : '#ef4444' }]} 
-          onPress={toggleMic}
-        >
-          <Ionicons name={micOn ? "mic" : "mic-off"} size={24} color="#fff" />
-        </TouchableOpacity>
+      <View style={styles.controlsDockWrapper}>
+        <View style={styles.controlsContainer}>
+          <TouchableOpacity 
+            style={[styles.controlButton, { backgroundColor: micOn ? 'rgba(255,255,255,0.15)' : '#ef4444' }]} 
+            onPress={toggleMic}
+          >
+            <Ionicons name={micOn ? "mic" : "mic-off"} size={22} color="#fff" />
+          </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={[styles.controlButton, { backgroundColor: '#ef4444', transform: [{ scale: 1.2 }] }]} 
-          onPress={leaveCall}
-        >
-          <Ionicons name="call" size={24} color="#fff" style={{ transform: [{ rotate: '135deg' }] }} />
-        </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.controlButton, { backgroundColor: '#ef4444', transform: [{ scale: 1.1 }] }]} 
+            onPress={leaveCall}
+          >
+            <Ionicons name="call" size={24} color="#fff" style={{ transform: [{ rotate: '135deg' }] }} />
+          </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={[styles.controlButton, { backgroundColor: cameraOn ? 'rgba(255,255,255,0.2)' : '#ef4444' }]} 
-          onPress={toggleCamera}
-        >
-          <Ionicons name={cameraOn ? "videocam" : "videocam-off"} size={24} color="#fff" />
-        </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.controlButton, { backgroundColor: cameraOn ? 'rgba(255,255,255,0.15)' : '#ef4444' }]} 
+            onPress={toggleCamera}
+          >
+            <Ionicons name={cameraOn ? "videocam" : "videocam-off"} size={22} color="#fff" />
+          </TouchableOpacity>
+        </View>
       </View>
+
+      <ErrorModal
+        visible={!!errorModalMsg}
+        message={errorModalMsg || ''}
+        onClose={() => setErrorModalMsg(null)}
+      />
+      <NotificationModal
+        visible={!!noticeMsg}
+        title="Doctor Left"
+        message={noticeMsg || ''}
+        onClose={() => { setNoticeMsg(null); leaveCall(); }}
+      />
     </SafeAreaView>
   );
 }
@@ -241,31 +337,52 @@ const styles = StyleSheet.create({
     right: 24,
     width: 100,
     height: 150,
-    backgroundColor: '#000',
-    borderRadius: 12,
+    backgroundColor: '#0f172a',
+    borderRadius: 16,
     overflow: 'hidden',
     borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)',
-    elevation: 5,
+    borderColor: '#22ae9e', // Brand color border
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+  },
+  controlsDockWrapper: {
+    position: 'absolute',
+    bottom: 30,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
   },
   controlsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-evenly',
     alignItems: 'center',
-    paddingVertical: 20,
-    paddingHorizontal: 30,
-    backgroundColor: 'transparent',
-    position: 'absolute',
-    bottom: 30,
-    left: 0,
-    right: 0,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    backgroundColor: 'rgba(15, 23, 42, 0.8)', // Translucent dark dock
+    borderRadius: 40,
+    gap: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
   controlButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  pulseCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(34, 174, 158, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(34, 174, 158, 0.3)',
   },
 });
 
