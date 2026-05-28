@@ -14,13 +14,13 @@ import apiClient from '../lib/apiClient';
 
 // --- TypeScript Interfaces ---
 type RootStackParamList = {
-  VideoModule: { appointmentId: string };
-  Dashboard: undefined;
+    VideoModule: { appointmentId: string };
+    Dashboard: undefined;
 };
 type VideoModuleScreenRouteProp = RouteProp<RootStackParamList, 'VideoModule'>;
 
 interface Props {
-  route: VideoModuleScreenRouteProp;
+    route: VideoModuleScreenRouteProp;
 }
 
 // --- Billing Helper ---
@@ -29,9 +29,9 @@ const checkVideoStatus = async (currentDurationMinutes: number) => {
         // FIX: Replaced raw fetch with apiClient
         const response: any = await apiClient.post('/api/video/check-status', { currentDurationMinutes });
         return response;
-    } catch (e) { 
+    } catch (e) {
         Logger.error('Status check failed', e, { currentDurationMinutes });
-        return { status: 'error' }; 
+        return { status: 'error' };
     }
 };
 
@@ -44,11 +44,11 @@ const formatTime = (seconds: number) => {
 export default function VideoModuleScreen({ route }: any) {
     const { appointmentId } = route.params;
     const navigation = useNavigation<any>();
-    
+
     const [callObject, setCallObject] = useState<DailyCall | null>(null);
     const [localParticipant, setLocalParticipant] = useState<DailyParticipant | null>(null);
     const [remoteParticipant, setRemoteParticipant] = useState<DailyParticipant | null>(null);
-    
+
     const [micOn, setMicOn] = useState(true);
     const [cameraOn, setCameraOn] = useState(true);
 
@@ -59,7 +59,7 @@ export default function VideoModuleScreen({ route }: any) {
     const [isConnecting, setIsConnecting] = useState(true);
     const [warningMessage, setWarningMessage] = useState<string | null>(null);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
-    const [criticalError, setCriticalError] = useState<{title: string, message: string, actionText: string, onAction: () => void} | null>(null);
+    const [criticalError, setCriticalError] = useState<{ title: string, message: string, actionText: string, onAction: () => void } | null>(null);
 
     useEffect(() => {
         const initCall = async () => {
@@ -75,7 +75,7 @@ export default function VideoModuleScreen({ route }: any) {
                     const participants = co.participants();
                     const local = participants.local;
                     const remote = Object.values(participants).find(p => !p.local);
-                    
+
                     setLocalParticipant(local as DailyParticipant);
                     setRemoteParticipant((remote as DailyParticipant) || null);
                 };
@@ -89,9 +89,9 @@ export default function VideoModuleScreen({ route }: any) {
                 co.on('participant-updated', updateParticipants);
                 co.on('participant-left', updateParticipants);
                 co.on('error', (e: any) => {
-                    Logger.error('Daily Call Object Error', e, { 
-                        source: 'VideoModuleScreen', 
-                        appointment_id: appointmentId 
+                    Logger.error('Daily Call Object Error', e, {
+                        source: 'VideoModuleScreen',
+                        appointment_id: appointmentId
                     });
                     setCriticalError({
                         title: 'Connection Error',
@@ -151,7 +151,7 @@ export default function VideoModuleScreen({ route }: any) {
                     actionText: 'OK',
                     onAction: handleEndCall
                 });
-            }, 5 * 60 * 1000); // 5 minutes
+            }, 3 * 60 * 1000); // 3 minutes
         }
 
         return () => {
