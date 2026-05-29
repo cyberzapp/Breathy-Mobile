@@ -109,7 +109,7 @@ export default function DashboardTabs() {
               end={{ x: 1, y: 1 }}
               style={styles.taraButton}
             >
-              <Image source={require('../../assets/lady_doctor_icon.png')} style={{ width: 44, height: 44, borderRadius: 22 }} />
+              <Image source={require('../../assets/doctor_icon.png')} style={{ width: 44, height: 44, borderRadius: 22 }} />
             </LinearGradient>
           ),
           tabBarButton: (props) => <CustomTabBarButton {...props} />,

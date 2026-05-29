@@ -14,8 +14,8 @@ import { CFPaymentGatewayService } from 'react-native-cashfree-pg-sdk';
 import { CFSession, CFEnvironment, CFWebCheckoutPayment } from 'cashfree-pg-api-contract';
 
 const CASHFREE_MODE = process.env.EXPO_PUBLIC_CASHFREE_MODE === 'production'
-  ? CFEnvironment.SANDBOX
-  : CFEnvironment.SANDBOX; // Force to Production to match the live Render backend
+  ? CFEnvironment.PRODUCTION
+  : CFEnvironment.SANDBOX;
 
 export default function BookingFlowScreen() {
   const route = useRoute<any>();

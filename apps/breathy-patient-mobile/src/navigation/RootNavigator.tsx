@@ -30,6 +30,7 @@ import ProgressScreen from '../screens/dashboard/ProgressScreen';
 import TaraScreen from '../screens/dashboard/TaraScreen';
 import { useOTAUpdates } from '../hooks/useOTAUpdates';
 import UpdateModal from '../components/ui/UpdateModal';
+import NetworkBanner from '../components/ui/NetworkBanner';
 
 import LanguageSelectionScreen from '../screens/auth/LanguageSelectionScreen';
 import WelcomeCarouselScreen from '../screens/auth/WelcomeCarouselScreen';
@@ -185,6 +186,8 @@ export default function RootNavigator() {
       onDismiss={onDismiss}
       onRetry={onRetry}
     />
+    {/* ── Global Network Banner ── */}
+    <NetworkBanner />
     </>
   );
 }

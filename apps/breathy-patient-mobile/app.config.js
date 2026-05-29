@@ -73,6 +73,7 @@ module.exports = {
           android: {
             newArchEnabled: true,
             enableProguardInReleaseBuilds: true,
+            pageAlign16k: true,
             packagingOptions: {
               pickFirst: ['lib/**/libc++_shared.so', 'lib/**/libjsc.so'],
             },
@@ -84,7 +85,8 @@ module.exports = {
       ],
       '@react-native-community/datetimepicker',
       'expo-font',
-      'expo-sharing'
+      'expo-sharing',
+      './plugins/withRemoveOrientation.js'
     ],
     extra: {
       eas: {

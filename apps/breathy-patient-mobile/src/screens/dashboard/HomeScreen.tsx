@@ -343,7 +343,7 @@ export default function HomeScreen({ navigation }: any) {
               <View style={styles.taraCardContent}>
                 <View style={{ flex: 1 }}>
                   <View style={styles.taraLabelRow}>
-                    <Image source={require('../../../assets/lady_doctor_icon.png')} style={{ width: 16, height: 16, borderRadius: 8, marginRight: 4 }} />
+                    <Image source={require('../../../assets/doctor_icon.png')} style={{ width: 16, height: 16, borderRadius: 8, marginRight: 4 }} />
                     <Text style={styles.taraLabelText}>TARA AI</Text>
                   </View>
                   <Text style={styles.taraTitle}>Your Personal Mentor</Text>
