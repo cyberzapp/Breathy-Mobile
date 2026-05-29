@@ -26,6 +26,8 @@ export default function ReceptionistsSettingsScreen() {
     maxStaff: 0, planName: 'Free', isUnlimited: false,
   });
 
+  const [doctorId, setDoctorId] = useState<string | null>(null);
+
   // Self Check-in
   const [clinics, setClinics] = useState<any[]>([]);
   const [selectedClinicId, setSelectedClinicId] = useState<string | null>(null);
@@ -48,6 +50,7 @@ export default function ReceptionistsSettingsScreen() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      setDoctorId(user.id);
 
       // 1. Subscription
       const { data: subData } = await supabase
@@ -130,7 +133,9 @@ export default function ReceptionistsSettingsScreen() {
   };
 
   const selectedClinicName = clinics.find(c => c?.id === selectedClinicId)?.name || 'My Clinic';
-  const checkInUrl = selectedClinicId ? `https://www.breathy.in/check-in/${selectedClinicId}` : '';
+  const checkInUrl = selectedClinicId && doctorId 
+    ? `https://www.breathy.in/check-in/${selectedClinicId}?doctorId=${doctorId}` 
+    : '';
   const qrCodeImgUrl = checkInUrl ? `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(checkInUrl)}` : '';
 
   const handleShareQr = async () => {
