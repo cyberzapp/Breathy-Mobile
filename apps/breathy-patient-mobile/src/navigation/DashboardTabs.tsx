@@ -9,7 +9,8 @@ import {
   Stethoscope,
   Sparkles,
   LineChart,
-  LayoutGrid
+  LayoutGrid,
+  Users
 } from 'lucide-react-native';
 
 import HomeScreen from '../screens/dashboard/HomeScreen';

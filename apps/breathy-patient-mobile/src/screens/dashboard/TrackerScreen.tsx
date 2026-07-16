@@ -19,7 +19,7 @@ import dayjs from 'dayjs';
 import { Activity, Droplets, Moon, Plus, ChevronRight, Flame } from 'lucide-react-native';
 
 import { useAuthStore } from '../../store/authStore';
-import { getDailyHealthMetrics, updateDailyHealthMetrics, deleteFoodLog } from '../../services/patientService';
+import { getDailyHealthMetrics, updateDailyHealthMetrics, deleteFoodLog, getWorkoutHistory, getFastingHistory, startFasting } from '../../services/patientService';
 
 const { width } = Dimensions.get('window');
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -126,8 +126,15 @@ export default function TrackerScreen() {
     try {
       setLoading(true);
       const res = await getDailyHealthMetrics(selectedDate);
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-      setHealthData(res.data || res);
+      const workoutsRes = await getWorkoutHistory(selectedDate);
+      const fastingRes = await getFastingHistory('active');
+      
+      const baseData = res.data || res;
+      setHealthData({ 
+        ...baseData, 
+        workouts: Array.isArray(workoutsRes) ? workoutsRes : (workoutsRes?.data || []), 
+        fastingLogs: Array.isArray(fastingRes) ? fastingRes : (fastingRes?.data || []) 
+      });
     } catch (e) {
       console.warn(e);
     } finally {
@@ -151,7 +158,8 @@ export default function TrackerScreen() {
   const handleUpdateSteps = async () => {
     if (!stepsInput) return;
     try {
-      const newSteps = parseInt(stepsInput);
+      const currentSteps = healthData?.metrics?.steps_count || 0;
+      const newSteps = currentSteps + parseInt(stepsInput);
       setHealthData((prev: any) => ({ ...prev, metrics: { ...prev.metrics, steps_count: newSteps } }));
       await updateDailyHealthMetrics(selectedDate, { steps_count: newSteps });
       setStepsModalVisible(false);
@@ -162,7 +170,8 @@ export default function TrackerScreen() {
   const handleUpdateSleep = async () => {
     if (!sleepInput) return;
     try {
-      const newSleepMins = parseFloat(sleepInput) * 60;
+      const currentSleep = healthData?.metrics?.sleep_minutes || 0;
+      const newSleepMins = currentSleep + (parseFloat(sleepInput) * 60);
       setHealthData((prev: any) => ({ ...prev, metrics: { ...prev.metrics, sleep_minutes: newSleepMins } }));
       await updateDailyHealthMetrics(selectedDate, { sleep_minutes: newSleepMins });
       setSleepModalVisible(false);
@@ -180,6 +189,21 @@ export default function TrackerScreen() {
     }
   };
 
+  const handleStartFast = async () => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      setLoading(true);
+      await startFasting({ 
+        start_time: dayjs().toISOString(),
+        goal_hours: 16
+      });
+      fetchMetrics();
+    } catch (e) {
+      console.warn(e);
+      setLoading(false);
+    }
+  };
+
   const metrics = healthData?.metrics || {};
   const logs = healthData?.foodLogs || [];
   
@@ -188,7 +212,9 @@ export default function TrackerScreen() {
   const totalCarb = logs.reduce((sum: number, log: any) => sum + (log.carbs_g || 0), 0);
   const totalFat = logs.reduce((sum: number, log: any) => sum + (log.fats_g || 0), 0);
 
-  const calGoal = metrics.calories_goal || 2200;
+  const workouts = healthData?.workouts || [];
+  const activeCalories = workouts.reduce((sum: number, w: any) => sum + (w.calories_burned || 0), 0);
+  const calGoal = (metrics.calories_goal || 2200) + activeCalories;
   const proGoal = 150; const carbGoal = 250; const fatGoal = 70;
   
   const steps = metrics.steps_count || 0;
@@ -211,6 +237,9 @@ export default function TrackerScreen() {
           <Text style={styles.headerSubtitle}>Ready to smash your goals?</Text>
         </View>
         <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+          <TouchableOpacity style={styles.profileBtn} onPress={() => navigation.navigate('Community')}>
+            <Ionicons name="people" size={20} color="#0f172a" />
+          </TouchableOpacity>
           <TouchableOpacity style={styles.statsBtn} onPress={() => navigation.navigate('Progress')}>
             <Ionicons name="stats-chart" size={20} color="#111827" />
           </TouchableOpacity>
@@ -266,17 +295,45 @@ export default function TrackerScreen() {
           </View>
         </View>
 
-        {/* Action Buttons */}
-        <View style={styles.actionRow}>
-          <TouchableOpacity style={styles.primaryAction} onPress={() => navigation.navigate('FoodScanner')}>
-            <LinearGradient colors={['#22ae9e', '#1b8c7f']} style={StyleSheet.absoluteFillObject} />
-            <Ionicons name="scan-outline" size={24} color="#fff" />
-            <Text style={styles.primaryActionText}>Scan Meal</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.secondaryAction} onPress={() => navigation.navigate('FoodDatabase')}>
-            <Ionicons name="search" size={20} color="#111827" />
-            <Text style={styles.secondaryActionText}>Search</Text>
-          </TouchableOpacity>
+        {/* Apple-Style 2x2 Action Grid */}
+        <View style={styles.actionGrid}>
+          <View style={styles.actionGridRow}>
+            <TouchableOpacity style={styles.gridActionCard} onPress={() => navigation.navigate('FoodScanner')}>
+              <LinearGradient colors={['#22ae9e', '#1b8c7f']} style={StyleSheet.absoluteFillObject} />
+              <Ionicons name="scan" size={28} color="#fff" />
+              <Text style={styles.gridActionTextPrimary}>Scan Meal</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.gridActionCard} onPress={() => navigation.navigate('WorkoutTabs')}>
+              <View style={[styles.actionIconWrapper, { backgroundColor: '#f3f4f6' }]}>
+                <Ionicons name="barbell" size={24} color="#111827" />
+              </View>
+              <Text style={styles.gridActionText}>Workout</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.actionGridRow}>
+            <TouchableOpacity style={styles.gridActionCard} onPress={() => navigation.navigate('BodyMetrics')}>
+              <View style={[styles.actionIconWrapper, { backgroundColor: '#f0fdfa' }]}>
+                <Ionicons name="body" size={24} color="#0d9488" />
+              </View>
+              <Text style={styles.gridActionText}>Body Metrics</Text>
+            </TouchableOpacity>
+            {healthData?.fastingLogs?.length === 0 ? (
+              <TouchableOpacity style={styles.gridActionCard} onPress={handleStartFast}>
+                <View style={[styles.actionIconWrapper, { backgroundColor: '#fdf4ff' }]}>
+                  <Ionicons name="time" size={24} color="#c026d3" />
+                </View>
+                <Text style={styles.gridActionText}>Fast 16h</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={styles.gridActionCard} onPress={() => navigation.navigate('FoodDatabase')}>
+                <View style={[styles.actionIconWrapper, { backgroundColor: '#f8fafc' }]}>
+                  <Ionicons name="search" size={24} color="#475569" />
+                </View>
+                <Text style={styles.gridActionText}>Search Food</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
         
         {/* Re-integrated 2-Column Grid */}
@@ -294,7 +351,7 @@ export default function TrackerScreen() {
             <AnimatedProgressBar progress={steps / stepsGoal} color="#3b82f6" />
             <TouchableOpacity style={styles.quickAddBtn} onPress={() => setStepsModalVisible(true)}>
               <Plus size={12} color="#3b82f6" />
-              <Text style={[styles.quickAddText, { color: '#3b82f6' }]}>Log Steps</Text>
+              <Text style={[styles.quickAddText, { color: '#3b82f6' }]}>Add Steps</Text>
             </TouchableOpacity>
           </View>
 
@@ -335,6 +392,41 @@ export default function TrackerScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Premium Interactive Fasting Widget */}
+        {healthData?.fastingLogs?.length > 0 && (
+          <View style={styles.fastingWidget}>
+            <LinearGradient colors={['#fdf4ff', '#f5d0fe']} style={StyleSheet.absoluteFillObject} />
+            <View style={styles.fastingWidgetHeader}>
+              <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                <Ionicons name="time" size={20} color="#a21caf" />
+                <Text style={styles.fastingWidgetTitle}>Active Fast</Text>
+              </View>
+              <TouchableOpacity style={styles.endFastBtn} onPress={() => {/* End fast logic */}}>
+                <Text style={styles.endFastText}>End Fast</Text>
+              </TouchableOpacity>
+            </View>
+            
+            {healthData.fastingLogs.map((f: any) => {
+              const elapsedHours = dayjs().diff(dayjs(f.start_time), 'hour', true);
+              const progress = Math.min(elapsedHours / f.goal_hours, 1);
+              return (
+                <View key={f.id} style={styles.fastingContent}>
+                  <View style={styles.fastingTextGroup}>
+                    <Text style={styles.fastingTimeElapsed}>{elapsedHours.toFixed(1)}h</Text>
+                    <Text style={styles.fastingTimeGoal}>/ {f.goal_hours}h Goal</Text>
+                  </View>
+                  <View style={styles.fastingBarContainer}>
+                    <AnimatedProgressBar progress={progress} color="#c026d3" />
+                  </View>
+                  <Text style={styles.fastingHint}>
+                    {progress >= 1 ? 'Goal Reached! Amazing job. 🌟' : 'You are currently in the fat-burning zone. Keep going!'}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        )}
+
         {/* Feed */}
         <View style={styles.feedHeader}>
           <Text style={styles.sectionTitle}>Today's Log</Text>
@@ -343,24 +435,33 @@ export default function TrackerScreen() {
         
         {loading ? <ActivityIndicator color="#22ae9e" style={{ marginTop: 20 }} /> : null}
         
-        {logs.map((log: any) => (
-          <View key={log.id} style={styles.logCard}>
-            {log.image_url ? (
-              <Image source={{ uri: log.image_url }} style={styles.logImg} />
-            ) : (
-              <View style={styles.logImgPlaceholder}>
-                <Ionicons name="restaurant" size={20} color="#9CA3AF" />
-              </View>
-            )}
-            <View style={styles.logInfo}>
-              <Text style={styles.logName}>{log.food_name}</Text>
-              <Text style={styles.logMacros}>{log.calories} kcal • {log.protein_g}g P • {log.carbs_g}g C • {log.fats_g}g F</Text>
+        {['breakfast', 'lunch', 'dinner', 'snack'].map(category => {
+          const categoryLogs = logs.filter((l: any) => l.meal_type === category || (!l.meal_type && category === 'snack'));
+          if (categoryLogs.length === 0) return null;
+          return (
+            <View key={category} style={{ marginBottom: 16 }}>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: '#4b5563', textTransform: 'capitalize', marginBottom: 8 }}>{category}</Text>
+              {categoryLogs.map((log: any) => (
+                <View key={log.id} style={styles.logCard}>
+                  {log.image_url ? (
+                    <Image source={{ uri: log.image_url }} style={styles.logImg} />
+                  ) : (
+                    <View style={styles.logImgPlaceholder}>
+                      <Ionicons name="restaurant" size={20} color="#9CA3AF" />
+                    </View>
+                  )}
+                  <View style={styles.logInfo}>
+                    <Text style={styles.logName}>{log.food_name}</Text>
+                    <Text style={styles.logMacros}>{log.calories} kcal • {log.protein_g}g P • {log.carbs_g}g C • {log.fats_g}g F</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => handleDeleteFood(log.id)} style={styles.deleteBtn}>
+                    <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                  </TouchableOpacity>
+                </View>
+              ))}
             </View>
-            <TouchableOpacity onPress={() => handleDeleteFood(log.id)} style={styles.deleteBtn}>
-              <Ionicons name="trash-outline" size={18} color="#EF4444" />
-            </TouchableOpacity>
-          </View>
-        ))}
+          );
+        })}
         {logs.length === 0 && !loading && (
           <View style={styles.emptyState}>
             <Ionicons name="leaf-outline" size={40} color="#D1D5DB" />
@@ -375,7 +476,7 @@ export default function TrackerScreen() {
       <Modal visible={stepsModalVisible} animationType="fade" transparent={true} onRequestClose={() => setStepsModalVisible(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Log Steps</Text>
+            <Text style={styles.modalTitle}>Add Steps</Text>
             <TextInput style={styles.modalInput} keyboardType="numeric" placeholder="e.g. 5000" value={stepsInput} onChangeText={setStepsInput} autoFocus />
             <View style={styles.modalActions}>
               <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setStepsModalVisible(false); }} style={styles.modalBtn}>
@@ -393,8 +494,8 @@ export default function TrackerScreen() {
       <Modal visible={sleepModalVisible} animationType="fade" transparent={true} onRequestClose={() => setSleepModalVisible(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Log Sleep (Hours)</Text>
-            <TextInput style={styles.modalInput} keyboardType="numeric" placeholder="e.g. 7.5" value={sleepInput} onChangeText={setSleepInput} autoFocus />
+            <Text style={styles.modalTitle}>Add Sleep (Hours)</Text>
+            <TextInput style={styles.modalInput} keyboardType="numeric" placeholder="e.g. 1.5" value={sleepInput} onChangeText={setSleepInput} autoFocus />
             <View style={styles.modalActions}>
               <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSleepModalVisible(false); }} style={styles.modalBtn}>
                 <Text style={{ color: '#6b7280', fontWeight: '600' }}>Cancel</Text>
@@ -417,7 +518,7 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 28, fontWeight: '800', color: '#111827' },
   headerSubtitle: { fontSize: 15, color: '#6B7280', marginTop: 2 },
   statsBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' },
-  profileBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#111827', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  profileBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center' },
   profileImg: { width: '100%', height: '100%' },
   profileLetter: { color: '#fff', fontSize: 20, fontWeight: '700' },
   calDay: { width: 42, height: 54, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 8, elevation: 2 },
@@ -430,11 +531,31 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 20 },
   mainRings: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   macroCol: { gap: 16 },
-  actionRow: { flexDirection: 'row', gap: 12, marginBottom: 24 },
-  primaryAction: { flex: 1.5, height: 56, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  primaryActionText: { color: '#fff', fontWeight: '700', fontSize: 16, marginLeft: 8 },
-  secondaryAction: { flex: 1, height: 56, borderRadius: 16, backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 10, elevation: 2 },
-  secondaryActionText: { color: '#111827', fontWeight: '600', fontSize: 15, marginLeft: 8 },
+  macroRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  macroDot: { width: 10, height: 10, borderRadius: 5 },
+  macroText: { fontSize: 14, fontWeight: '700', color: '#475569' },
+  
+  rolloverBadge: { marginTop: 20, backgroundColor: '#ecfdf5', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#a7f3d0' },
+  rolloverTitle: { fontSize: 12, fontWeight: '800', color: '#047857', marginLeft: 6, textTransform: 'uppercase' },
+  rolloverText: { fontSize: 14, fontWeight: '700', color: '#065f46', marginTop: 4 },
+  actionGrid: { gap: 12, marginBottom: 24 },
+  actionGridRow: { flexDirection: 'row', gap: 12 },
+  gridActionCard: { flex: 1, height: 110, backgroundColor: '#fff', borderRadius: 20, padding: 16, justifyContent: 'space-between', shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 15, elevation: 3, overflow: 'hidden' },
+  actionIconWrapper: { width: 44, height: 44, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  gridActionText: { fontSize: 16, fontWeight: '700', color: '#111827' },
+  gridActionTextPrimary: { fontSize: 16, fontWeight: '700', color: '#fff' },
+
+  fastingWidget: { borderRadius: 24, padding: 20, overflow: 'hidden', shadowColor: '#c026d3', shadowOpacity: 0.15, shadowRadius: 20, elevation: 8, marginBottom: 24 },
+  fastingWidgetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  fastingWidgetTitle: { fontSize: 16, fontWeight: '800', color: '#86198f', marginLeft: 8 },
+  endFastBtn: { backgroundColor: '#fdf4ff', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: '#f5d0fe' },
+  endFastText: { color: '#a21caf', fontWeight: '700', fontSize: 12 },
+  fastingContent: { alignItems: 'center' },
+  fastingTextGroup: { flexDirection: 'row', alignItems: 'baseline', marginBottom: 16 },
+  fastingTimeElapsed: { fontSize: 42, fontWeight: '900', color: '#701a75' },
+  fastingTimeGoal: { fontSize: 16, fontWeight: '700', color: '#a21caf', marginLeft: 4 },
+  fastingBarContainer: { width: '100%', height: 12, backgroundColor: 'rgba(255,255,255,0.5)', borderRadius: 6, overflow: 'hidden', marginBottom: 12 },
+  fastingHint: { fontSize: 13, color: '#86198f', fontWeight: '600', textAlign: 'center' },
   
   grid: { flexDirection: 'row', gap: 12, marginBottom: 12 },
   gridCard: { flex: 1, backgroundColor: '#fff', borderRadius: 20, padding: 16, shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 10, elevation: 2 },

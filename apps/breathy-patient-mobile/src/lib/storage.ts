@@ -1,26 +1,37 @@
-import { MMKV } from 'react-native-mmkv';
-// In some environments (like Expo Go), MMKV's native modules might be missing.
-// We use a safe initialization to prevent app hangs.
-let mmkvInstance: any;
-try {
-  mmkvInstance = new MMKV();
-} catch (e) {
-  console.warn('MMKV failed to initialize. Falling back to memory storage. This usually happens in Expo Go. Use a development build for native MMKV support.');
-  // Simple memory-based fallback for development/Expo Go
-  const memoryStorage = new Map<string, string>();
-  mmkvInstance = {
-    set: (key: string, value: string | boolean | number) => memoryStorage.set(key, String(value)),
-    getString: (key: string) => memoryStorage.get(key),
-    delete: (key: string) => memoryStorage.delete(key),
-    getAllKeys: () => Array.from(memoryStorage.keys()),
-  };
+import { createMMKV } from 'react-native-mmkv';
+import * as SecureStore from 'expo-secure-store';
+
+const MMKV_KEY = 'mmkv.encryption.key';
+
+// Attempt to fetch the secure master key
+let secureKey = SecureStore.getItem(MMKV_KEY);
+
+if (!secureKey) {
+  // Generate a random 16-character string if one doesn't exist
+  secureKey = Math.random().toString(36).substring(2, 18);
+  SecureStore.setItem(MMKV_KEY, secureKey);
 }
 
-export const storage = mmkvInstance;
+// Initialize the Encrypted MMKV Instance
+export const storage = createMMKV({
+  id: 'secure-breathy-storage',
+  encryptionKey: secureKey,
+});
 
-/**
- * Custom storage adapter for Zustand persist middleware
- */
+// A wrapper to use MMKV as a Supabase storage adapter
+export const supabaseStorageAdapter = {
+  getItem: (key: string) => {
+    return storage.getString(key) ?? null;
+  },
+  setItem: (key: string, value: string) => {
+    storage.set(key, value);
+  },
+  removeItem: (key: string) => {
+    storage.remove(key);
+  },
+};
+
+// A wrapper to use MMKV with Zustand persist middleware
 export const zustandStorage = {
   setItem: (name: string, value: string) => {
     return storage.set(name, value);
@@ -30,6 +41,7 @@ export const zustandStorage = {
     return value ?? null;
   },
   removeItem: (name: string) => {
-    return storage.delete(name);
+    return storage.remove(name);
   },
 };
+

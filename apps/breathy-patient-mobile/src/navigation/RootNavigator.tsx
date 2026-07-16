@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as SplashScreen from 'expo-splash-screen';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../store/authStore';
@@ -26,6 +27,12 @@ import PdfViewerScreen from '../screens/dashboard/PdfViewerScreen';
 import CheckInScreen from '../screens/search/CheckInScreen';
 import FoodScannerScreen from '../screens/dashboard/FoodScannerScreen';
 import FoodDatabaseScreen from '../screens/dashboard/FoodDatabaseScreen';
+import WorkoutTabs from './WorkoutTabs';
+import ExerciseDirectoryScreen from '../screens/workout/ExerciseDirectoryScreen';
+import ExerciseDetailScreen from '../screens/workout/ExerciseDetailScreen';
+import WorkoutProgressScreen from '../screens/workout/WorkoutProgressScreen';
+import WorkoutSummaryScreen from '../screens/workout/WorkoutSummaryScreen';
+import BodyMetricsScreen from '../screens/dashboard/BodyMetricsScreen';
 import ProgressScreen from '../screens/dashboard/ProgressScreen';
 import TaraScreen from '../screens/dashboard/TaraScreen';
 import { useOTAUpdates } from '../hooks/useOTAUpdates';
@@ -132,7 +139,7 @@ export default function RootNavigator() {
 
 
   return (
-    <>
+    <GestureHandlerRootView style={{ flex: 1 }}>
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {!hasCompletedOnboarding ? (
@@ -158,6 +165,7 @@ export default function RootNavigator() {
             <Stack.Screen name="ChatList" component={ChatListScreen} />
             <Stack.Screen name="ChatRoom" component={ChatRoomScreen} />
             <Stack.Screen name="VideoRoom" component={VideoRoomScreen} />
+            <Stack.Screen name="WorkoutSummary" component={WorkoutSummaryScreen} />
             <Stack.Screen name="HealthRecords" component={HealthRecordsScreen} />
             <Stack.Screen name="Prescriptions" component={PrescriptionsScreen} />
             <Stack.Screen name="TreatmentPlans" component={TreatmentPlansScreen} />
@@ -169,7 +177,10 @@ export default function RootNavigator() {
             <Stack.Screen name="CheckIn" component={CheckInScreen} />
             <Stack.Screen name="FoodScanner" component={FoodScannerScreen} options={{ presentation: 'fullScreenModal' }} />
             <Stack.Screen name="FoodDatabase" component={FoodDatabaseScreen} options={{ presentation: 'modal' }} />
+            <Stack.Screen name="WorkoutTabs" component={WorkoutTabs} />
+            <Stack.Screen name="BodyMetrics" component={BodyMetricsScreen} options={{ presentation: 'modal' }} />
             <Stack.Screen name="Progress" component={ProgressScreen} />
+            <Stack.Screen name="ExerciseDetail" component={ExerciseDetailScreen} options={{ presentation: 'card' }} />
             <Stack.Screen name="TaraScreen" component={TaraScreen} />
           </Stack.Group>
         )}
@@ -188,6 +199,6 @@ export default function RootNavigator() {
     />
     {/* ── Global Network Banner ── */}
     <NetworkBanner />
-    </>
+    </GestureHandlerRootView>
   );
 }

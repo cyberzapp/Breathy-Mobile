@@ -8,6 +8,8 @@ import RootNavigator from './src/navigation/RootNavigator';
 import { posthog } from './src/config/posthog';
 import { useThemeStore } from './src/store/themeStore';
 
+import { StatusBar } from 'expo-status-bar';
+
 // Prevent splash screen from hiding automatically
 SplashScreen.preventAutoHideAsync();
 
@@ -21,6 +23,7 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
+        <StatusBar style="light" backgroundColor="#000000" />
         <PostHogProvider
           client={posthog}
           autocapture={{

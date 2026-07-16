@@ -296,12 +296,51 @@ export const searchFoodDatabase = async (query: string = '') => {
   return apiClient.get(`/api/patient-health/food/search?query=${encodeURIComponent(query)}`);
 };
 
-export const getCustomFoods = async () => {
+export const fetchCustomFoods = async (): Promise<any> => {
   return apiClient.get('/api/patient-health/food/custom');
 };
 
-export const createCustomFood = async (foodData: any) => {
-  return apiClient.post('/api/patient-health/food/custom', foodData);
+export const createCustomFood = async (data: any) => {
+  return apiClient.post('/api/patient-health/food/custom', data);
+};
+
+export const getWorkoutHistory = async (date?: string) => {
+  return apiClient.get(`/api/fitness/workouts${date ? `?date=${date}` : ''}`);
+};
+
+export const logWorkoutActivity = async (data: any) => {
+  return apiClient.post('/api/fitness/workouts', data);
+};
+
+export const getPublicRoutines = async () => {
+  return apiClient.get('/api/fitness/routines/public');
+};
+
+export const getBodyMetrics = async () => {
+  return apiClient.get('/api/fitness/body-metrics');
+};
+
+export const logBodyMetric = async (formData: FormData) => {
+  // Use raw fetch for multipart/form-data to avoid default JSON headers in apiClient
+  return apiClient.post('/api/fitness/body-metrics', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+};
+
+export const getFastingHistory = async (status?: string) => {
+  return apiClient.get(`/api/fitness/fasting${status ? `?status=${status}` : ''}`);
+};
+
+export const startFasting = async (data: any) => {
+  return apiClient.post('/api/fitness/fasting', data);
+};
+
+export const endFasting = async (id: string, data: any) => {
+  return apiClient.put(`/api/fitness/fasting/${id}/end`, data);
+};
+
+export const searchExercises = async (query: string = '') => {
+  return apiClient.get(`/api/fitness/exercises?query=${encodeURIComponent(query)}`);
 };
 
 export const getHealthProgress = async () => {

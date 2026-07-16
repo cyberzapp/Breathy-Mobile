@@ -357,6 +357,10 @@ export default function TaraScreen() {
         return m;
       }));
       await submitTaraFeedback(context, action);
+      
+      // Continue the conversation by sending the user's choice
+      const textToSay = action === 'accepted' ? "Yes, let's do it" : "Not for me";
+      handleSend(textToSay);
     } catch (e) {
       console.warn(e);
     }

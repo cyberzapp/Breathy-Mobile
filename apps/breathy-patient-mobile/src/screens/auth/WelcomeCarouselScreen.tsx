@@ -1,8 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeIn, SlideInUp } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
 import { useColors } from '../../hooks/useColors';
 
@@ -22,16 +22,22 @@ export default function WelcomeCarouselScreen() {
   return (
     <View style={[styles.container, { backgroundColor: c.bg, paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <View style={styles.content}>
-        {/* Lottie Animation placeholder */}
-        <View style={[styles.animationPlaceholder, { backgroundColor: c.card }]} />
+        {/* Welcome Image */}
+        <Animated.View entering={FadeIn.duration(1000)} style={styles.animationContainer}>
+          <Image
+            source={require('../../../assets/welcome.png')}
+            style={styles.animation}
+            resizeMode="cover"
+          />
+        </Animated.View>
         
-        <Animated.View entering={FadeInDown.duration(600).delay(200)} style={styles.textContainer}>
+        <Animated.View entering={SlideInUp.duration(800).springify().delay(200)} style={styles.textContainer}>
           <Text style={[styles.title, { color: c.text }]}>{t('onboarding.welcomeTitle')}</Text>
           <Text style={[styles.subtitle, { color: c.textSecondary }]}>{t('onboarding.welcomeSubtitle')}</Text>
         </Animated.View>
       </View>
 
-      <Animated.View entering={FadeInDown.duration(600).delay(400)} style={styles.footer}>
+      <Animated.View entering={SlideInUp.duration(800).springify().delay(400)} style={styles.footer}>
         <TouchableOpacity
           style={[styles.button, { backgroundColor: c.brand }]}
           onPress={handleGetStarted}
@@ -54,11 +60,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 30,
   },
-  animationPlaceholder: {
+  animationContainer: {
     width: width * 0.8,
     height: width * 0.8,
-    borderRadius: width * 0.4,
     marginBottom: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: width * 0.4,
+    overflow: 'hidden',
+  },
+  animation: {
+    width: '100%',
+    height: '100%',
+    borderRadius: width * 0.4,
   },
   textContainer: {
     alignItems: 'center',

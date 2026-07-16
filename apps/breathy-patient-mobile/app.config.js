@@ -2,7 +2,8 @@ module.exports = {
   expo: {
     name: 'Breathy',
     slug: 'patient',
-    version: '1.0.0',
+    version: '1.1.0',
+    jsEngine: 'hermes',
     orientation: 'default',
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',
@@ -30,12 +31,13 @@ module.exports = {
       },
     },
     android: {
+      jsEngine: 'hermes',
       adaptiveIcon: {
         foregroundImage: './assets/adaptive-icon.png',
         backgroundColor: '#22ae9e',
       },
       package: 'com.breathy.patient',
-      versionCode: 1,
+      versionCode: 10,
       googleServicesFile: './google-services.json',
       permissions: [
         'android.permission.CAMERA',
@@ -86,6 +88,7 @@ module.exports = {
       '@react-native-community/datetimepicker',
       'expo-font',
       'expo-sharing',
+      'expo-image',
       './plugins/withRemoveOrientation.js'
     ],
     extra: {

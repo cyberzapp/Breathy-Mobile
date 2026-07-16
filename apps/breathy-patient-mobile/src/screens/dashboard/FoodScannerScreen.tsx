@@ -21,6 +21,7 @@ export default function FoodScannerScreen() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [CameraView, setCameraView] = useState<any>(null);
+  const [selectedMeal, setSelectedMeal] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack'>('snack');
 
   useEffect(() => {
     (async () => {
@@ -79,6 +80,7 @@ export default function FoodScannerScreen() {
         carbs_g: result.carbs_g || 0,
         fats_g: result.fats_g || 0,
         image_url: null,
+        meal_type: selectedMeal,
       });
       navigation.goBack();
     } catch (e) {
@@ -161,6 +163,23 @@ export default function FoodScannerScreen() {
                   <Text style={styles.macroValue}>{result.fats_g}g</Text>
                   <Text style={styles.macroLabel}>Fats</Text>
                 </View>
+              </View>
+
+              <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 20, gap: 8 }}>
+                {['breakfast', 'lunch', 'dinner', 'snack'].map(meal => (
+                  <TouchableOpacity 
+                    key={meal}
+                    style={{ 
+                      paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, 
+                      backgroundColor: selectedMeal === meal ? '#111827' : '#f3f4f6' 
+                    }}
+                    onPress={() => setSelectedMeal(meal as any)}
+                  >
+                    <Text style={{ color: selectedMeal === meal ? '#fff' : '#6b7280', fontSize: 13, textTransform: 'capitalize', fontWeight: '600' }}>
+                      {meal}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
               </View>
               
               <View style={styles.actionRow}>

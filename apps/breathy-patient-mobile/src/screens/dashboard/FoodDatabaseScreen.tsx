@@ -16,7 +16,7 @@ import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { searchFoodDatabase, logFoodItem, getCustomFoods, createCustomFood } from '../../services/patientService';
+import { searchFoodDatabase, logFoodItem, fetchCustomFoods, createCustomFood } from '../../services/patientService';
 import dayjs from 'dayjs';
 
 // Simple debounce hook
@@ -41,6 +41,7 @@ export default function FoodDatabaseScreen() {
   const [customFoods, setCustomFoods] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'All' | 'MyFoods'>('All');
+  const [selectedMeal, setSelectedMeal] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack'>('snack');
 
   // Custom Food Modal State
   const [modalVisible, setModalVisible] = useState(false);
@@ -54,15 +55,15 @@ export default function FoodDatabaseScreen() {
 
   useEffect(() => {
     if (activeTab === 'MyFoods') {
-      fetchCustomFoods();
+      loadCustomFoods();
     }
   }, [activeTab]);
 
-  const fetchCustomFoods = async () => {
+  const loadCustomFoods = async () => {
     try {
       setLoading(true);
-      const res = await getCustomFoods();
-      setCustomFoods(res.data || res);
+      const res: any = await fetchCustomFoods();
+      setCustomFoods(res?.data || res || []);
     } catch (e) {
       console.warn(e);
     } finally {
@@ -92,6 +93,7 @@ export default function FoodDatabaseScreen() {
         protein_g: food.protein || 0,
         carbs_g: food.carbs || 0,
         fats_g: food.fat || 0,
+        meal_type: selectedMeal,
       });
       navigation.goBack();
     } catch (e) {
@@ -164,6 +166,23 @@ export default function FoodDatabaseScreen() {
           onChangeText={setSearchQuery}
           returnKeyType="search"
         />
+      </View>
+
+      <View style={{ flexDirection: 'row', paddingHorizontal: 20, marginTop: 12, gap: 8 }}>
+        {['breakfast', 'lunch', 'dinner', 'snack'].map(meal => (
+          <TouchableOpacity 
+            key={meal}
+            style={{ 
+              paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, 
+              backgroundColor: selectedMeal === meal ? '#111827' : '#f3f4f6' 
+            }}
+            onPress={() => setSelectedMeal(meal as any)}
+          >
+            <Text style={{ color: selectedMeal === meal ? '#fff' : '#6b7280', fontSize: 13, textTransform: 'capitalize', fontWeight: '600' }}>
+              {meal}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       <View style={styles.tabsContainer}>
